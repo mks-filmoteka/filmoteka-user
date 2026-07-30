@@ -18,12 +18,24 @@
 
     <properties>
         <java.version>25</java.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.28.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <!-- ======================================== -->
     <!--               DEPENDENCIES               -->
     <!-- ======================================== -->
     <dependencies>
+
         <!-- ============= Spring =============== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -78,6 +90,21 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
 
