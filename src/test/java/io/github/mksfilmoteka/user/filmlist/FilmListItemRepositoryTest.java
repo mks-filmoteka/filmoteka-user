@@ -83,13 +83,13 @@ class FilmListItemRepositoryTest {
     }
 
     @Test
-    void shouldDeleteByFilmListIdAndFilmId() {
+    void shouldDeleteFilmListItem() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
         FilmList savedFilmList = entityManager.persistAndFlush(FilmListTestData.filmList(savedUserProfile));
-        filmListItemRepository.saveAndFlush(filmListItem(savedFilmList, FILM_ID));
+        FilmListItem filmListItem = filmListItemRepository.saveAndFlush(filmListItem(savedFilmList, FILM_ID));
         filmListItemRepository.saveAndFlush(filmListItem(savedFilmList, OTHER_FILM_ID));
 
-        filmListItemRepository.deleteByFilmListIdAndFilmId(savedFilmList.getId(), FILM_ID);
+        filmListItemRepository.delete(filmListItem);
         filmListItemRepository.flush();
 
         assertFalse(filmListItemRepository.existsByFilmListIdAndFilmId(savedFilmList.getId(), FILM_ID));
