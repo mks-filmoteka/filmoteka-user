@@ -11,6 +11,4 @@ public interface FilmListItemRepository extends JpaRepository<FilmListItem,Long>
     Optional<FilmListItem> findByFilmListIdAndFilmId(Long filmListId, Long filmId);
 
     boolean existsByFilmListIdAndFilmId(Long filmListId, Long filmId);
-
-    void deleteByFilmListIdAndFilmId(Long filmListId, Long filmId);
 }
