@@ -1,5 +1,9 @@
 package io.github.mksfilmoteka.user.filmlist;
 
+import io.github.mksfilmoteka.user.filmlist.dto.FilmListItemRequest;
+import io.github.mksfilmoteka.user.filmlist.dto.FilmListItemResponse;
+import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
+import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
 import io.github.mksfilmoteka.user.profile.UserProfile;
 
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.loadedUserProfile;
@@ -45,7 +49,7 @@ public final class FilmListTestData {
     }
 
     public static FilmListItem loadedFilmListItem() {
-        FilmListItem filmListItem = filmListItem();
+        FilmListItem filmListItem = filmListItem(loadedFilmList(), FILM_ID);
         filmListItem.setId(ITEM_ID);
         return filmListItem;
     }
@@ -55,5 +59,25 @@ public final class FilmListTestData {
         filmListItem.setFilmList(filmList);
         filmListItem.setFilmId(filmId);
         return filmListItem;
+    }
+
+    public static FilmListRequest filmListRequest() {
+        return new FilmListRequest(LIST_NAME);
+    }
+
+    public static FilmListRequest updateFilmListRequest() {
+        return new FilmListRequest("updated name");
+    }
+
+    public static FilmListResponse filmListResponse() {
+        return new FilmListResponse(LIST_ID, LIST_NAME);
+    }
+
+    public static FilmListItemRequest filmListItemRequest() {
+        return new FilmListItemRequest(FILM_ID);
+    }
+
+    public static FilmListItemResponse filmListItemResponse() {
+        return new FilmListItemResponse(ITEM_ID, FILM_ID);
     }
 }

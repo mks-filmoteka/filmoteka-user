@@ -1,5 +1,8 @@
 package io.github.mksfilmoteka.user.profile;
 
+import io.github.mksfilmoteka.user.profile.dto.UserProfileRequest;
+import io.github.mksfilmoteka.user.profile.dto.UserProfileResponse;
+
 public final class UserProfileTestData {
     public static final String IDENTITY_SUB = "test-sub";
     public static final String EMAIL = "test@gmail.com";
@@ -25,5 +28,17 @@ public final class UserProfileTestData {
         userProfile.setIdentitySub(identitySub);
         userProfile.setEmail(email);
         return userProfile;
+    }
+
+    public static UserProfileRequest userProfileRequest() {
+        return new UserProfileRequest(DISPLAY_NAME);
+    }
+
+    public static UserProfileRequest updateUserProfileRequest() {
+        return new UserProfileRequest("Updated User");
+    }
+
+    public static UserProfileResponse userProfileResponse() {
+        return new UserProfileResponse(USER_PROFILE_ID, EMAIL, DISPLAY_NAME);
     }
 }
