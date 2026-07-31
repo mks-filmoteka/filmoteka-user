@@ -7,6 +7,7 @@ public final class UserProfileTestData {
     public static final String IDENTITY_SUB = "test-sub";
     public static final String EMAIL = "test@gmail.com";
     public static final String DISPLAY_NAME = "Test User";
+    public static final String UPDATED_DISPLAY_NAME = "updated name";
     public static final long USER_PROFILE_ID = 1L;
 
     public static UserProfile userProfile() {
@@ -35,10 +36,14 @@ public final class UserProfileTestData {
     }
 
     public static UserProfileRequest updateUserProfileRequest() {
-        return new UserProfileRequest("Updated User");
+        return new UserProfileRequest(UPDATED_DISPLAY_NAME);
     }
 
     public static UserProfileResponse userProfileResponse() {
         return new UserProfileResponse(USER_PROFILE_ID, EMAIL, DISPLAY_NAME);
+    }
+
+    public static UserProfileResponse updateUserProfileResponse() {
+        return new UserProfileResponse(USER_PROFILE_ID, EMAIL, UPDATED_DISPLAY_NAME);
     }
 }

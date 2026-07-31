@@ -31,6 +31,6 @@ class UserProfileMapperTest {
 
         userProfileMapper.updateUserProfileRequestToUserProfile(updateUserProfileRequest(), userProfile);
 
-        assertThat(userProfile.getDisplayName()).isEqualTo("Updated User");
+        assertThat(userProfile.getDisplayName()).isEqualTo(UPDATED_DISPLAY_NAME);
     }
 }
