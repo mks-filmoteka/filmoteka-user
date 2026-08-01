@@ -33,7 +33,7 @@ class FilmListRepositoryTest {
     @Test
     void shouldFindAllByUserId() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
-        FilmList savedFilmList = filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
 
         List<FilmList> loadedFilmLists = filmListRepository.findAllByUserId(savedUserProfile.getId());
 
@@ -44,7 +44,7 @@ class FilmListRepositoryTest {
     @Test
     void shouldFindByIdAndUserId() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
-        FilmList savedFilmList = filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
 
         Optional<FilmList> loadedFilmList =
                 filmListRepository.findByIdAndUserId(savedFilmList.getId(), savedUserProfile.getId());
@@ -59,9 +59,21 @@ class FilmListRepositoryTest {
     }
 
     @Test
+    void shouldPersistFilmIds() {
+        UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
+
+        Optional<FilmList> loadedFilmList =
+                filmListRepository.findByIdAndUserId(savedFilmList.getId(), savedUserProfile.getId());
+
+        assertTrue(loadedFilmList.isPresent());
+        assertThat(loadedFilmList.get().getFilmIds()).containsExactlyInAnyOrder(FILM_ID, OTHER_FILM_ID);
+    }
+
+    @Test
     void shouldNotFindFilmListOfAnotherUser() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
-        FilmList savedFilmList = filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
         UserProfile otherUserProfile = userProfile();
         otherUserProfile.setIdentitySub("other-sub");
         otherUserProfile.setEmail("other@gmail.com");
@@ -76,7 +88,7 @@ class FilmListRepositoryTest {
     @Test
     void shouldCheckIfNameExistsIgnoringCaseForUser() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
-        filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
+        filmListRepository.saveAndFlush(filmList(savedUserProfile));
 
         boolean exists = filmListRepository.existsByNameIgnoreCaseAndUserId("TeSt NaMe", savedUserProfile.getId());
 
@@ -87,7 +99,7 @@ class FilmListRepositoryTest {
     void shouldCheckIfNameDoesNotExistForAnotherUser() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
         UserProfile otherUserProfile = entityManager.persistAndFlush(UserProfileTestData.userProfile("other-sub", "other@gmail.com"));
-        filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
+        filmListRepository.saveAndFlush(filmList(savedUserProfile));
 
         boolean exists = filmListRepository.existsByNameIgnoreCaseAndUserId(LIST_NAME, otherUserProfile.getId());
 
@@ -99,8 +111,8 @@ class FilmListRepositoryTest {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
         UserProfile otherUserProfile = entityManager.persistAndFlush(UserProfileTestData.userProfile("other-sub", "other@gmail.com"));
 
-        FilmList savedFilmList = filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
-        FilmList savedOtherUserFilmList = filmListRepository.saveAndFlush(FilmListTestData.filmList(otherUserProfile));
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
+        FilmList savedOtherUserFilmList = filmListRepository.saveAndFlush(filmList(otherUserProfile));
 
         assertNotNull(savedFilmList.getId());
         assertNotNull(savedOtherUserFilmList.getId());
@@ -109,10 +121,25 @@ class FilmListRepositoryTest {
     @Test
     void shouldThrowOnDuplicateNameConflictForUserIgnoringCase() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
-        filmListRepository.saveAndFlush(FilmListTestData.filmList(savedUserProfile));
+        filmListRepository.saveAndFlush(filmList(savedUserProfile));
 
-        FilmList duplicate = FilmListTestData.filmList(savedUserProfile);
+        FilmList duplicate = filmList(savedUserProfile);
 
         assertThrows(DataIntegrityViolationException.class, () -> filmListRepository.saveAndFlush(duplicate));
+    }
+
+    @Test
+    void shouldRemoveFilmId() {
+        UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
+
+        savedFilmList.getFilmIds().remove(FILM_ID);
+        filmListRepository.saveAndFlush(savedFilmList);
+
+        Optional<FilmList> loadedFilmList =
+                filmListRepository.findByIdAndUserId(savedFilmList.getId(), savedUserProfile.getId());
+
+        assertTrue(loadedFilmList.isPresent());
+        assertThat(loadedFilmList.get().getFilmIds()).containsExactly(OTHER_FILM_ID);
     }
 }

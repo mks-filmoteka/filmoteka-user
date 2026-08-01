@@ -21,6 +21,7 @@ class FilmListMapperTest {
         assertThat(filmList.getName()).isEqualTo(LIST_NAME);
         assertThat(filmList.getUser()).isNull();
         assertThat(filmList.getId()).isNull();
+        assertThat(filmList.getFilmIds()).isEmpty();
     }
 
     @Test
@@ -45,8 +46,9 @@ class FilmListMapperTest {
 
         filmListMapper.updateFilmListRequestToFilmList(updateFilmListRequest(), filmList);
 
-        assertThat(filmList.getName()).isEqualTo("updated name");
+        assertThat(filmList.getName()).isEqualTo(UPDATED_LIST_NAME);
         assertThat(filmList.getId()).isEqualTo(originalId);
         assertThat(filmList.getUser()).isSameAs(originalUser);
+        assertThat(filmList.getFilmIds()).isEqualTo(filmIds());
     }
 }

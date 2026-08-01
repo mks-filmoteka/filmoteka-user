@@ -120,7 +120,7 @@ class FilmListServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> filmListService.createFilmList(USER_PROFILE_ID, request));
 
         verify(userProfileRepository).findById(USER_PROFILE_ID);
-        verifyNoInteractions(filmListMapper);
+        verifyNoInteractions(filmListRepository, filmListMapper);
         verify(filmListRepository, never()).save(any());
     }
 
@@ -153,9 +153,27 @@ class FilmListServiceTest {
         ArgumentCaptor<FilmList> captor = ArgumentCaptor.forClass(FilmList.class);
 
         verify(filmListRepository).save(captor.capture());
-        assertThat(captor.getValue().getName()).isEqualTo("updated name");
+        assertThat(captor.getValue().getName()).isEqualTo(UPDATED_LIST_NAME);
+        assertThat(captor.getValue().getFilmIds()).isEqualTo(filmIds());
         verify(filmListMapper).updateFilmListRequestToFilmList(request, loadedFilmList);
         verify(filmListMapper).filmListToFilmListResponse(any(FilmList.class));
+    }
+
+    @Test
+    void shouldUpdateForNamaEqualIgnoringCase() {
+        FilmList filmList = loadedFilmList();
+        FilmListRequest request = new FilmListRequest(LIST_NAME.toUpperCase());
+        FilmListResponse expected = new FilmListResponse(LIST_ID, LIST_NAME.toUpperCase(), filmIds());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        doAnswer(updateNameOnly()).when(filmListMapper).updateFilmListRequestToFilmList(request, filmList);
+        when(filmListRepository.save(filmList)).thenReturn(filmList);
+        when(filmListMapper.filmListToFilmListResponse(filmList)).thenReturn(expected);
+
+        FilmListResponse response = filmListService.updateFilmList(USER_PROFILE_ID, LIST_ID, request);
+
+        assertThat(response).isEqualTo(expected);
+
+        verify(filmListRepository, never()).existsByNameIgnoreCaseAndUserId(anyString(), anyLong());
     }
 
     @Test
@@ -174,6 +192,20 @@ class FilmListServiceTest {
     }
 
     @Test
+    void shouldThrowOnUpdateIfFilmListDoesNotExist() {
+        FilmListRequest request = updateFilmListRequest();
+
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> filmListService.updateFilmList(USER_PROFILE_ID, LIST_ID, request));
+
+        verify(filmListRepository, never()).existsByNameIgnoreCaseAndUserId(anyString(), anyLong());
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
     void shouldDeleteFilmList() {
         FilmList filmList = loadedFilmList();
         when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
@@ -184,12 +216,74 @@ class FilmListServiceTest {
     }
 
     @Test
-    void shouldThrowOnDeleteIfNotExists() {
+    void shouldThrowOnDeleteIfDoesNotExist() {
         when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> filmListService.deleteFilmList(USER_PROFILE_ID, LIST_ID));
 
         verify(filmListRepository, never()).delete(any(FilmList.class));
+    }
+
+    @Test
+    void shouldAddFilmToFilmList() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        when(filmListRepository.save(filmList)).thenReturn(filmList);
+        when(filmListMapper.filmListToFilmListResponse(filmList)).thenReturn(filmListResponse());
+
+        FilmListResponse response = filmListService.addFilm(USER_PROFILE_ID, LIST_ID, OTHER_FILM_ID);
+
+        assertThat(response).isEqualTo(filmListResponse());
+        assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(FILM_ID, OTHER_FILM_ID);
+        verify(filmListRepository).save(filmList);
+        verify(filmListMapper).filmListToFilmListResponse(filmList);
+    }
+
+    @Test
+    void shouldThrowOnAddFilmIfFilmListDoesNotExist() {
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> filmListService.addFilm(USER_PROFILE_ID, LIST_ID, FILM_ID));
+
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
+    void shouldDeleteFilmFromFilmList() {
+        FilmList filmList = loadedFilmList();
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        when(filmListRepository.save(filmList)).thenReturn(filmList);
+
+        filmListService.removeFilm(USER_PROFILE_ID, LIST_ID, FILM_ID);
+
+        assertThat(filmList.getFilmIds()).doesNotContain(FILM_ID);
+        verify(filmListRepository).save(filmList);
+    }
+
+    @Test
+    void shouldThrowOnRemoveFilmIfFilmListDoesNotExist() {
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> filmListService.removeFilm(USER_PROFILE_ID, LIST_ID, FILM_ID));
+
+        verify(filmListRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowOnRemoveFilmIfDoesNotExist() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                filmListService.removeFilm(USER_PROFILE_ID, LIST_ID, OTHER_FILM_ID));
+
+        verify(filmListRepository, never()).save(any(FilmList.class));
     }
 
     private static Answer<Void> updateNameOnly() {

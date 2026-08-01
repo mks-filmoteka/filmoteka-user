@@ -66,6 +66,25 @@ public class FilmListService {
         filmListRepository.delete(filmList);
     }
 
+    @Transactional
+    public FilmListResponse addFilm(Long userId, Long id, Long filmId) {
+        FilmList filmList = getFilmListOrThrow(userId, id);
+        filmList.getFilmIds().add(filmId);
+
+        FilmList saved = filmListRepository.save(filmList);
+        return filmListMapper.filmListToFilmListResponse(saved);
+    }
+
+    @Transactional
+    public void removeFilm(Long userId, Long id, Long filmId) {
+        FilmList filmList = getFilmListOrThrow(userId, id);
+        if (!filmList.getFilmIds().remove(filmId)) {
+            throw new ResourceNotFoundException("Film with id " + filmId + " not found in film list " + id);
+        }
+
+        filmListRepository.save(filmList);
+    }
+
     private FilmList getFilmListOrThrow(Long userId, Long id) {
         return filmListRepository.findByIdAndUserId(id, userId).orElseThrow(() ->
                 new ResourceNotFoundException("Film list with id " + id + " not found"));
