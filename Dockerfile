@@ -1,0 +1,23 @@
+FROM maven:3.9.16-eclipse-temurin-25 AS build
+
+WORKDIR /app
+
+COPY pom.xml .
+COPY src src
+
+RUN mvn --no-transfer-progress -DskipTests package
+
+
+FROM eclipse-temurin:25-jre
+
+WORKDIR /app
+
+RUN groupadd --system filmoteka && useradd --system --gid filmoteka --no-create-home filmoteka
+
+COPY --from=build --chown=filmoteka:filmoteka /app/target/*.jar /app/app.jar
+
+USER filmoteka:filmoteka
+
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
