@@ -12,13 +12,6 @@ class UserProfileMapperTest {
     private final UserProfileMapper userProfileMapper = Mappers.getMapper(UserProfileMapper.class);
 
     @Test
-    void shouldMapUserProfileRequestToUserProfile() {
-        UserProfile userProfile = userProfileMapper.userProfileRequestToUserProfile(userProfileRequest());
-
-        assertThat(userProfile.getDisplayName()).isEqualTo(DISPLAY_NAME);
-    }
-
-    @Test
     void shouldMapUserProfileToUserProfileResponse() {
         UserProfileResponse response = userProfileMapper.userProfileToUserProfileResponse(loadedUserProfile());
 

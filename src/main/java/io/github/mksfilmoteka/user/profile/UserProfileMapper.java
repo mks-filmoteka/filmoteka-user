@@ -7,8 +7,6 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface UserProfileMapper {
-    UserProfile userProfileRequestToUserProfile(UserProfileRequest request);
-
     void updateUserProfileRequestToUserProfile(UserProfileRequest request, @MappingTarget UserProfile userProfile);
 
     UserProfileResponse userProfileToUserProfileResponse(UserProfile userProfile);
