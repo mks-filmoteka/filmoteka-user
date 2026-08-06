@@ -1,4 +1,4 @@
-package io.github.mksfilmoteka.user.common.security;
+package io.github.mksfilmoteka.user.auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import static io.github.mksfilmoteka.user.auth.AuthTestData.jwt;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class KeycloakRealmRoleConverterTest {
@@ -37,20 +38,10 @@ class KeycloakRealmRoleConverterTest {
 
     @Test
     void shouldReturnScopeAuthoritiesWhenRolesClaimIsMissing() {
-        Jwt jwt = jwt(Map.of(
-                "scope", "openid",
-                "realm_access", Map.of())
-        );
+        Jwt jwt = jwt(Map.of("scope", "openid", "realm_access", Map.of()));
         Collection<GrantedAuthority> result = converter.convert(jwt);
         assertThat(result)
                 .extracting(GrantedAuthority::getAuthority)
                 .containsExactly("SCOPE_openid");
-    }
-
-    private static Jwt jwt(Map<String, Object> claims) {
-        return Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .claims(existingClaims -> existingClaims.putAll(claims))
-                .build();
     }
 }
