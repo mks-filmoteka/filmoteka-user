@@ -1,5 +1,6 @@
 package io.github.mksfilmoteka.user.profile;
 
+import io.github.mksfilmoteka.user.auth.AuthUser;
 import io.github.mksfilmoteka.user.profile.dto.UserProfileRequest;
 import io.github.mksfilmoteka.user.profile.dto.UserProfileResponse;
 
@@ -32,8 +33,8 @@ public final class UserProfileTestData {
         return userProfile;
     }
 
-    public static UserProfileRequest userProfileRequest() {
-        return new UserProfileRequest(DISPLAY_NAME);
+    public static AuthUser authUser() {
+        return new AuthUser(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
     }
 
     public static UserProfileRequest updateUserProfileRequest() {

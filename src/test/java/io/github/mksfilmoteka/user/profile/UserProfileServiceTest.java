@@ -1,6 +1,6 @@
 package io.github.mksfilmoteka.user.profile;
 
-import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
+import io.github.mksfilmoteka.user.auth.AuthUser;
 import io.github.mksfilmoteka.user.profile.dto.UserProfileRequest;
 import io.github.mksfilmoteka.user.profile.dto.UserProfileResponse;
 import org.junit.jupiter.api.Test;
@@ -10,15 +10,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 
-import java.util.Optional;
-
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserProfileServiceTest {
+
+    @Mock
+    private UserProfileProvisionService provisioningService;
 
     @Mock
     private UserProfileRepository userProfileRepository;
@@ -30,63 +30,46 @@ class UserProfileServiceTest {
     private UserProfileService userProfileService;
 
     @Test
-    void shouldFindUserProfileByIdIfExists() {
+    void shouldGetUserProfile() {
+        AuthUser authUser = authUser();
         UserProfile userProfile = loadedUserProfile();
+        UserProfileResponse expectedResponse = userProfileResponse();
 
-        when(userProfileRepository.findById(USER_PROFILE_ID)).thenReturn(Optional.of(userProfile));
-        when(userProfileMapper.userProfileToUserProfileResponse(userProfile)).thenReturn(userProfileResponse());
+        when(provisioningService.getOrCreate(authUser)).thenReturn(userProfile);
+        when(userProfileMapper.userProfileToUserProfileResponse(userProfile)).thenReturn(expectedResponse);
 
-        UserProfileResponse response = userProfileService.findById(USER_PROFILE_ID);
+        UserProfileResponse response = userProfileService.getUserProfile(authUser);
 
-        assertThat(response).isEqualTo(userProfileResponse());
+        assertThat(response).isEqualTo(expectedResponse);
 
-        verify(userProfileRepository).findById(USER_PROFILE_ID);
+        verify(provisioningService).getOrCreate(authUser);
         verify(userProfileMapper).userProfileToUserProfileResponse(userProfile);
+        verifyNoInteractions(userProfileRepository);
     }
 
     @Test
-    void shouldThrowOnFindByIdIfUserProfileDoesNotExist() {
-        when(userProfileRepository.findById(USER_PROFILE_ID)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> userProfileService.findById(USER_PROFILE_ID));
-
-        verify(userProfileRepository).findById(USER_PROFILE_ID);
-        verifyNoInteractions(userProfileMapper);
-    }
-
-    @Test
-    void shouldUpdateUserProfileIfExists() {
+    void shouldUpdateUserProfile() {
+        AuthUser authUser = authUser();
         UserProfile userProfile = loadedUserProfile();
         UserProfileRequest request = updateUserProfileRequest();
+        UserProfileResponse expectedResponse = updateUserProfileResponse();
 
-        when(userProfileRepository.findById(USER_PROFILE_ID)).thenReturn(Optional.of(userProfile));
-        doAnswer(updateDisplayNameOnly()).when(userProfileMapper)
+        when(provisioningService.getOrCreate(authUser)).thenReturn(userProfile);
+        doAnswer(updateDisplayNameOnly())
+                .when(userProfileMapper)
                 .updateUserProfileRequestToUserProfile(request, userProfile);
         when(userProfileRepository.save(userProfile)).thenReturn(userProfile);
-        when(userProfileMapper.userProfileToUserProfileResponse(userProfile)).thenReturn(updateUserProfileResponse());
+        when(userProfileMapper.userProfileToUserProfileResponse(userProfile)).thenReturn(expectedResponse);
 
-        UserProfileResponse response = userProfileService.updateUserProfile(USER_PROFILE_ID, request);
+        UserProfileResponse response = userProfileService.updateUserProfile(authUser, request);
 
-        assertThat(response).isEqualTo(updateUserProfileResponse());
+        assertThat(response).isEqualTo(expectedResponse);
         assertThat(userProfile.getDisplayName()).isEqualTo(UPDATED_DISPLAY_NAME);
 
+        verify(provisioningService).getOrCreate(authUser);
         verify(userProfileMapper).updateUserProfileRequestToUserProfile(request, userProfile);
         verify(userProfileRepository).save(userProfile);
         verify(userProfileMapper).userProfileToUserProfileResponse(userProfile);
-    }
-
-    @Test
-    void shouldThrowOnUpdateIfUserProfileDoesNotExist() {
-        UserProfileRequest request = userProfileRequest();
-
-        when(userProfileRepository.findById(USER_PROFILE_ID)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> userProfileService.updateUserProfile(USER_PROFILE_ID, request));
-
-        verify(userProfileRepository).findById(USER_PROFILE_ID);
-        verify(userProfileRepository, never()).save(any());
-        verifyNoInteractions(userProfileMapper);
     }
 
     private static Answer<Void> updateDisplayNameOnly() {
