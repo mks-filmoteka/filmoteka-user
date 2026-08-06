@@ -1,4 +1,4 @@
-package io.github.mksfilmoteka.user.common.security;
+package io.github.mksfilmoteka.user.auth;
 
 import org.jspecify.annotations.NonNull;
 import org.springframework.core.convert.converter.Converter;

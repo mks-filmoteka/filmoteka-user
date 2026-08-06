@@ -91,6 +91,14 @@ public class GlobalExceptionHandler {
                 .body(buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request, ErrorCode.BAD_REQUEST));
     }
 
+    @ExceptionHandler(InvalidAuthenticationClaimsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidAuthenticationClaims(
+            InvalidAuthenticationClaimsException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, ErrorCode.UNAUTHORIZED));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, HttpServletRequest request) {

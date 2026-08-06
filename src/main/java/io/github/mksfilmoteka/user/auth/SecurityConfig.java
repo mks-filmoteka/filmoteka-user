@@ -1,4 +1,4 @@
-package io.github.mksfilmoteka.user.common.security;
+package io.github.mksfilmoteka.user.auth;
 
 import org.springframework.boot.health.actuate.endpoint.HealthEndpoint;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;

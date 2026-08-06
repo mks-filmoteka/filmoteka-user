@@ -5,5 +5,6 @@ public enum ErrorCode {
     CONFLICT,
     VALIDATION_FAILED,
     BAD_REQUEST,
+    UNAUTHORIZED,
     INTERNAL_ERROR
 }
