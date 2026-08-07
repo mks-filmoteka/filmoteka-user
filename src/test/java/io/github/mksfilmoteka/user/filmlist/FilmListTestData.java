@@ -16,6 +16,7 @@ public final class FilmListTestData {
     public static final long LIST_ID = 1L;
     public static final long FILM_ID = 100L;
     public static final long OTHER_FILM_ID = 200L;
+    public static final String FILM_LISTS_URL = "/api/v1/film-lists";
 
     public static FilmList filmList() {
         FilmList filmList = new FilmList();
@@ -34,13 +35,6 @@ public final class FilmListTestData {
     public static FilmList filmList(UserProfile userProfile) {
         FilmList filmList = filmList();
         filmList.setUser(userProfile);
-        return filmList;
-    }
-
-    public static FilmList filmList(UserProfile userProfile, String listName) {
-        FilmList filmList = filmList();
-        filmList.setUser(userProfile);
-        filmList.setName(listName);
         return filmList;
     }
 

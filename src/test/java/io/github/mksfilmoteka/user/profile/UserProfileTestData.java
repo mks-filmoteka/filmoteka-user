@@ -1,14 +1,18 @@
 package io.github.mksfilmoteka.user.profile;
 
+import io.github.mksfilmoteka.user.auth.AuthUser;
 import io.github.mksfilmoteka.user.profile.dto.UserProfileRequest;
 import io.github.mksfilmoteka.user.profile.dto.UserProfileResponse;
 
 public final class UserProfileTestData {
     public static final String IDENTITY_SUB = "test-sub";
     public static final String EMAIL = "test@gmail.com";
+    public static final String NEW_EMAIL = "new-email@gmail.com";
     public static final String DISPLAY_NAME = "Test User";
     public static final String UPDATED_DISPLAY_NAME = "updated name";
     public static final long USER_PROFILE_ID = 1L;
+    public static final AuthUser AUTH_USER = authUser();
+    public static final String PROFILE_URL = "/api/v1/profile";
 
     public static UserProfile userProfile() {
         UserProfile userProfile = new UserProfile();
@@ -31,8 +35,8 @@ public final class UserProfileTestData {
         return userProfile;
     }
 
-    public static UserProfileRequest userProfileRequest() {
-        return new UserProfileRequest(DISPLAY_NAME);
+    public static AuthUser authUser() {
+        return new AuthUser(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
     }
 
     public static UserProfileRequest updateUserProfileRequest() {

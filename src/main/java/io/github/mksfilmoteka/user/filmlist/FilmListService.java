@@ -1,11 +1,12 @@
 package io.github.mksfilmoteka.user.filmlist;
 
+import io.github.mksfilmoteka.user.auth.AuthUser;
 import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
 import io.github.mksfilmoteka.user.profile.UserProfile;
-import io.github.mksfilmoteka.user.profile.UserProfileRepository;
+import io.github.mksfilmoteka.user.profile.UserProfileProvisionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,25 +21,31 @@ import java.util.List;
 public class FilmListService {
 
     private final FilmListRepository filmListRepository;
-    private final UserProfileRepository userProfileRepository;
     private final FilmListMapper filmListMapper;
+    private final UserProfileProvisionService userProfileProvisionService;
 
-    public List<FilmListResponse> getFilmLists(Long userId) {
+    public List<FilmListResponse> getFilmLists(AuthUser authUser) {
+        UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
+        Long userId = userProfile.getId();
+
         log.debug("Searching film lists. userId={}", userId);
 
-        getUserProfileOrThrow(userId);
         List<FilmList> filmLists = filmListRepository.findAllByUserId(userId);
         return filmListMapper.filmListsToFilmListResponses(filmLists);
     }
 
-    public FilmListResponse findById(Long userId, Long id) {
+    public FilmListResponse findById(AuthUser authUser, Long id) {
+        Long userId = getUserId(authUser);
+
         FilmList filmList = getFilmListOrThrow(userId, id);
         return filmListMapper.filmListToFilmListResponse(filmList);
     }
 
     @Transactional
-    public FilmListResponse createFilmList(Long userId, FilmListRequest request) {
-        UserProfile userProfile = getUserProfileOrThrow(userId);
+    public FilmListResponse createFilmList(AuthUser authUser, FilmListRequest request) {
+        UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
+        Long userId = userProfile.getId();
+
         if (filmListRepository.existsByNameIgnoreCaseAndUserId(request.name(), userId)) {
             throw new ConflictException("Film list with name '" + request.name() + "' already exists");
         }
@@ -53,7 +60,8 @@ public class FilmListService {
     }
 
     @Transactional
-    public FilmListResponse updateFilmList(Long userId, Long id, FilmListRequest request) {
+    public FilmListResponse updateFilmList(AuthUser authUser, Long id, FilmListRequest request) {
+        Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
         if (!filmList.getName().equalsIgnoreCase(request.name())
                 && filmListRepository.existsByNameIgnoreCaseAndUserId(request.name(), userId)) {
@@ -69,14 +77,16 @@ public class FilmListService {
     }
 
     @Transactional
-    public void deleteFilmList(Long userId, Long id) {
+    public void deleteFilmList(AuthUser authUser, Long id) {
+        Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
         filmListRepository.delete(filmList);
         log.info("Deleted film list id={}, userId={}", id, userId);
     }
 
     @Transactional
-    public FilmListResponse addFilm(Long userId, Long id, Long filmId) {
+    public FilmListResponse addFilm(AuthUser authUser, Long id, Long filmId) {
+        Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
         filmList.getFilmIds().add(filmId);
 
@@ -87,7 +97,8 @@ public class FilmListService {
     }
 
     @Transactional
-    public void removeFilm(Long userId, Long id, Long filmId) {
+    public void removeFilm(AuthUser authUser, Long id, Long filmId) {
+        Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
         if (!filmList.getFilmIds().remove(filmId)) {
             throw new ResourceNotFoundException("Film with id " + filmId + " not found in film list " + id);
@@ -98,12 +109,11 @@ public class FilmListService {
     }
 
     private FilmList getFilmListOrThrow(Long userId, Long id) {
-        return filmListRepository.findByIdAndUserId(id, userId).orElseThrow(() ->
-                new ResourceNotFoundException("Film list with id " + id + " not found"));
+        return filmListRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Film list with id " + id + " not found"));
     }
 
-    private UserProfile getUserProfileOrThrow(Long userId) {
-        return userProfileRepository.findById(userId).orElseThrow(() ->
-                new ResourceNotFoundException("User profile with id " + userId + " not found"));
+    private Long getUserId(AuthUser authUser) {
+        return userProfileProvisionService.getOrCreate(authUser).getId();
     }
 }
