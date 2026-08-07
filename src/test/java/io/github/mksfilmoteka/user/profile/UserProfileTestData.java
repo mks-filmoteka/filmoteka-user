@@ -11,6 +11,7 @@ public final class UserProfileTestData {
     public static final String DISPLAY_NAME = "Test User";
     public static final String UPDATED_DISPLAY_NAME = "updated name";
     public static final long USER_PROFILE_ID = 1L;
+    public static final AuthUser AUTH_USER = authUser();
 
     public static UserProfile userProfile() {
         UserProfile userProfile = new UserProfile();
