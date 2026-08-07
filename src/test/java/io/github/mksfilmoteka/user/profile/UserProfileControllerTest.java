@@ -15,9 +15,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.json.JsonMapper;
 
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
+import static io.github.mksfilmoteka.user.util.TestUtil.JSON_MAPPER;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -30,12 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({SecurityConfig.class, KeycloakRealmRoleConverter.class})
 class UserProfileControllerTest {
 
-    private static final String PROFILE_URL = "/api/v1/profile";
-
     @Autowired
     private MockMvc mockMvc;
-
-    private final JsonMapper jsonMapper = JsonMapper.builder().findAndAddModules().build();
 
     @MockitoBean
     private UserProfileService userProfileService;
@@ -68,7 +64,7 @@ class UserProfileControllerTest {
                         ))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().json(jsonMapper.writeValueAsString(expectedResponse)));
+                .andExpect(content().json(JSON_MAPPER.writeValueAsString(expectedResponse)));
 
         verify(authUserConverter).from(any(Jwt.class));
         verify(userProfileService).getUserProfile(authUser);
@@ -89,10 +85,10 @@ class UserProfileControllerTest {
                                 .claim("email", EMAIL)
                         ))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(request)))
+                        .content(JSON_MAPPER.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().json(jsonMapper.writeValueAsString(expectedResponse)));
+                .andExpect(content().json(JSON_MAPPER.writeValueAsString(expectedResponse)));
 
         verify(authUserConverter).from(any(Jwt.class));
         verify(userProfileService).updateUserProfile(authUser, request);
@@ -103,7 +99,7 @@ class UserProfileControllerTest {
         mockMvc.perform(put(PROFILE_URL)
                         .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(new UserProfileRequest(""))))
+                        .content(JSON_MAPPER.writeValueAsString(new UserProfileRequest(""))))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(authUserConverter, userProfileService);

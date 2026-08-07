@@ -6,8 +6,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.Map;
 
-import static io.github.mksfilmoteka.user.auth.AuthTestData.jwt;
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
+import static io.github.mksfilmoteka.user.util.TestUtil.jwt;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

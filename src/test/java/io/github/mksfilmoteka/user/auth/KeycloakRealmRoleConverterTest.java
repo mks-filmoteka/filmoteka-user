@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import static io.github.mksfilmoteka.user.auth.AuthTestData.jwt;
+import static io.github.mksfilmoteka.user.util.TestUtil.jwt;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class KeycloakRealmRoleConverterTest {
