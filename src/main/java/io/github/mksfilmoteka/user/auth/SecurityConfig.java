@@ -13,6 +13,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
 
+    private static final String[] SWAGGER_PATHS = {"/swagger-ui/**", "/swagger-ui.html", "/api-docs", "/api-docs/**"};
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter) {
         return http
@@ -22,9 +24,10 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize ->
-                        authorize.requestMatchers(EndpointRequest.to(HealthEndpoint.class))
-                                .permitAll().anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                        .requestMatchers(SWAGGER_PATHS).permitAll()
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
                 .build();
