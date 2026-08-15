@@ -35,6 +35,10 @@ spring:
           audiences:
             - ${AUTH_AUDIENCE}
 
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
 logging:
   level:
     root: INFO
