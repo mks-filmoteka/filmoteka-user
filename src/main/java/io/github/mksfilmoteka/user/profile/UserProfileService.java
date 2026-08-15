@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class UserProfileService {
 
     private final UserProfileProvisionService provisioningService;
@@ -24,7 +24,6 @@ public class UserProfileService {
         return userProfileMapper.userProfileToUserProfileResponse(userProfile);
     }
 
-    @Transactional
     public UserProfileResponse updateUserProfile(AuthUser authUser, UserProfileRequest request) {
         UserProfile userProfile = provisioningService.getOrCreate(authUser);
 
