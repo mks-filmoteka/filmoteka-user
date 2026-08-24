@@ -3,6 +3,7 @@ package io.github.mksfilmoteka.user.filmlist;
 import io.github.mksfilmoteka.user.auth.AuthUser;
 import io.github.mksfilmoteka.user.auth.AuthUserConverter;
 import io.github.mksfilmoteka.user.common.exception.ErrorResponse;
+import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -181,6 +182,37 @@ public class FilmListController {
             @PathVariable Long filmId) {
 
         return ResponseEntity.ok(filmListService.addFilm(authUser(jwt), id, filmId));
+    }
+
+    @Operation(
+            summary = "Patch films in film list",
+            description = "Adds and removes film ids in a film list owned by the authenticated user"
+    )
+    @ApiResponse(responseCode = "200", description = "Film list films patched",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = FilmListResponse.class)
+            )
+    )
+    @ApiResponse(responseCode = "400", description = "Validation error",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)
+            )
+    )
+    @ApiResponse(responseCode = "404", description = "Film list or film entries not found",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)
+            )
+    )
+    @PatchMapping("/{id}/films")
+    public ResponseEntity<FilmListResponse> patchFilms(
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long id,
+            @Valid @RequestBody ListedFilmsRequest request) {
+
+        return ResponseEntity.ok(filmListService.patchFilms(authUser(jwt), id, request));
     }
 
     @Operation(

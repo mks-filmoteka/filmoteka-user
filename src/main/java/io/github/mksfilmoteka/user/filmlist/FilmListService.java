@@ -5,6 +5,7 @@ import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
+import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.profile.UserProfile;
 import io.github.mksfilmoteka.user.profile.UserProfileProvisionService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -92,6 +94,35 @@ public class FilmListService {
 
         FilmList saved = filmListRepository.save(filmList);
         log.info("Added film id={} to film list id={}, userId={}", filmId, saved.getId(), userId);
+
+        return filmListMapper.filmListToFilmListResponse(saved);
+    }
+
+    @Transactional
+    public FilmListResponse patchFilms(AuthUser authUser, Long id, ListedFilmsRequest request) {
+        Long userId = getUserId(authUser);
+        FilmList filmList = getFilmListOrThrow(userId, id);
+
+        Set<Long> toAdd = request.addedFilmIds() == null ? Set.of() : request.addedFilmIds();
+        Set<Long> toRemove = request.removedFilmIds() == null ? Set.of() : request.removedFilmIds();
+        Set<Long> filmIds = filmList.getFilmIds();
+
+        int countBefore = filmIds.size();
+        filmIds.addAll(toAdd);
+        int addedCount = filmIds.size() - countBefore;
+
+        countBefore = filmIds.size();
+        filmIds.removeAll(toRemove);
+        int removedCount = countBefore - filmIds.size();
+
+        if (addedCount == 0 && removedCount == 0) {
+            log.debug("No film changes applied for film list id={}, userId={}", id, userId);
+            return filmListMapper.filmListToFilmListResponse(filmList);
+        }
+
+        FilmList saved = filmListRepository.save(filmList);
+        log.info("Patched film list id={}, userId={}, films added={}, films removed={}",
+                id, userId, addedCount, removedCount);
 
         return filmListMapper.filmListToFilmListResponse(saved);
     }
