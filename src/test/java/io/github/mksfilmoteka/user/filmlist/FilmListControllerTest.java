@@ -3,6 +3,7 @@ package io.github.mksfilmoteka.user.filmlist;
 import io.github.mksfilmoteka.user.auth.AuthUserConverter;
 import io.github.mksfilmoteka.user.auth.KeycloakRealmRoleConverter;
 import io.github.mksfilmoteka.user.auth.SecurityConfig;
+import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Set;
 
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.AUTH_USER;
@@ -162,6 +164,39 @@ class FilmListControllerTest {
 
         verify(authUserConverter).from(any(Jwt.class));
         verify(filmListService).addFilm(AUTH_USER, LIST_ID, FILM_ID);
+    }
+
+    @Test
+    void shouldPatchFilmsInFilmList() throws Exception {
+        ListedFilmsRequest request = listedFilmsRequest();
+        FilmListResponse expectedResponse = new FilmListResponse(LIST_ID, LIST_NAME,
+                filmIds(OTHER_FILM_ID));
+
+        when(authUserConverter.from(any(Jwt.class))).thenReturn(AUTH_USER);
+        when(filmListService.patchFilms(AUTH_USER, LIST_ID, request))
+                .thenReturn(expectedResponse);
+
+        mockMvc.perform(patch(FILM_LISTS_URL + "/{id}/films", LIST_ID).with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON_MAPPER.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().json(JSON_MAPPER.writeValueAsString(expectedResponse)));
+
+        verify(authUserConverter).from(any(Jwt.class));
+        verify(filmListService).patchFilms(AUTH_USER, LIST_ID, request);
+    }
+
+    @Test
+    void shouldRejectOverlappingPatchFilmsRequest() throws Exception {
+        ListedFilmsRequest request = new ListedFilmsRequest(Set.of(FILM_ID), Set.of(FILM_ID));
+
+        mockMvc.perform(patch(FILM_LISTS_URL + "/{id}/films", LIST_ID).with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON_MAPPER.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(authUserConverter, filmListService);
     }
 
     @Test

@@ -4,6 +4,7 @@ import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
+import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.profile.UserProfile;
 import io.github.mksfilmoteka.user.profile.UserProfileProvisionService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.mockito.stubbing.Answer;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
@@ -231,6 +233,45 @@ class FilmListServiceTest {
     }
 
     @Test
+    void shouldPatchFilmsInFilmList() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+        FilmListResponse expectedResponse = new FilmListResponse(LIST_ID, LIST_NAME,
+                filmIds(OTHER_FILM_ID));
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        when(filmListRepository.save(filmList)).thenReturn(filmList);
+        when(filmListMapper.filmListToFilmListResponse(filmList)).thenReturn(expectedResponse);
+
+        FilmListResponse response = filmListService.patchFilms(AUTH_USER, LIST_ID, listedFilmsRequest());
+
+        assertThat(response).isEqualTo(expectedResponse);
+        assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(OTHER_FILM_ID);
+        verify(filmListRepository).save(filmList);
+        verify(filmListMapper).filmListToFilmListResponse(filmList);
+    }
+
+    @Test
+    void shouldReturnCurrentFilmListOnPatchFilmsIfNoEffectiveChanges() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        FilmListResponse expectedResponse = new FilmListResponse(LIST_ID, LIST_NAME, filmIds(FILM_ID));
+        when(filmListMapper.filmListToFilmListResponse(filmList)).thenReturn(expectedResponse);
+
+        FilmListResponse response = filmListService.patchFilms(AUTH_USER, LIST_ID,
+                new ListedFilmsRequest(filmIds(FILM_ID), filmIds(OTHER_FILM_ID)));
+
+        assertThat(response).isEqualTo(expectedResponse);
+        assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(FILM_ID);
+        verify(filmListRepository, never()).save(any(FilmList.class));
+        verify(filmListMapper).filmListToFilmListResponse(filmList);
+    }
+
+    @Test
     void shouldThrowOnAddFilmIfFilmListDoesNotExist() {
         when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
         when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.empty());
@@ -279,6 +320,25 @@ class FilmListServiceTest {
                 filmListService.removeFilm(AUTH_USER, LIST_ID, OTHER_FILM_ID));
 
         verify(filmListRepository, never()).save(any(FilmList.class));
+    }
+
+    @Test
+    void shouldIgnoreRemovedFilmIdsThatDoNotExistOnPatchFilms() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        FilmListResponse expectedResponse = new FilmListResponse(LIST_ID, LIST_NAME, filmIds(FILM_ID));
+        when(filmListMapper.filmListToFilmListResponse(filmList)).thenReturn(expectedResponse);
+
+        FilmListResponse response = filmListService.patchFilms(AUTH_USER, LIST_ID,
+                new ListedFilmsRequest(Set.of(), filmIds(OTHER_FILM_ID)));
+
+        assertThat(response).isEqualTo(expectedResponse);
+        assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(FILM_ID);
+        verify(filmListRepository, never()).save(any(FilmList.class));
+        verify(filmListMapper).filmListToFilmListResponse(filmList);
     }
 
     private static Answer<Void> updateNameOnly() {

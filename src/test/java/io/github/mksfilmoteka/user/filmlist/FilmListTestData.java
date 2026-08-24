@@ -2,6 +2,7 @@ package io.github.mksfilmoteka.user.filmlist;
 
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
+import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.profile.UserProfile;
 
 import java.util.Arrays;
@@ -48,6 +49,10 @@ public final class FilmListTestData {
 
     public static FilmListResponse filmListResponse() {
         return new FilmListResponse(LIST_ID, LIST_NAME, filmIds());
+    }
+
+    public static ListedFilmsRequest listedFilmsRequest() {
+        return new ListedFilmsRequest(filmIds(OTHER_FILM_ID), filmIds(FILM_ID));
     }
 
     public static Set<Long> filmIds(Long... filmIds) {
