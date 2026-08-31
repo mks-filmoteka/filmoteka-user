@@ -36,6 +36,12 @@ spring:
             - ${AUTH_AUDIENCE}
 
 app:
+  clients:
+    catalog:
+      base-url: ${CATALOG_API_URL}
+      connect-timeout: ${CATALOG_CONNECT_TIMEOUT:2s}
+      read-timeout: ${CATALOG_READ_TIMEOUT:5s}
+
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
