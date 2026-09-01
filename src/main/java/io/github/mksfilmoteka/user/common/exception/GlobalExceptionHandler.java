@@ -99,6 +99,16 @@ public class GlobalExceptionHandler {
                 .body(buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, ErrorCode.UNAUTHORIZED));
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(
+            ServiceUnavailableException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(buildResponse(
+                        HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request, ErrorCode.SERVICE_UNAVAILABLE
+                ));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, HttpServletRequest request) {

@@ -1,7 +1,9 @@
 package io.github.mksfilmoteka.user.filmlist;
 
+import io.github.mksfilmoteka.user.catalog.CatalogClient;
 import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
+import io.github.mksfilmoteka.user.common.exception.ServiceUnavailableException;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
 import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
@@ -36,6 +38,9 @@ class FilmListServiceTest {
 
     @Mock
     private FilmListMapper filmListMapper;
+
+    @Mock
+    private CatalogClient catalogClient;
 
     @InjectMocks
     private FilmListService filmListService;
@@ -228,6 +233,7 @@ class FilmListServiceTest {
 
         assertThat(response).isEqualTo(filmListResponse());
         assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(FILM_ID, OTHER_FILM_ID);
+        verify(catalogClient).requireFilmExists(OTHER_FILM_ID);
         verify(filmListRepository).save(filmList);
         verify(filmListMapper).filmListToFilmListResponse(filmList);
     }
@@ -248,6 +254,7 @@ class FilmListServiceTest {
 
         assertThat(response).isEqualTo(expectedResponse);
         assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(OTHER_FILM_ID);
+        verify(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
         verify(filmListRepository).save(filmList);
         verify(filmListMapper).filmListToFilmListResponse(filmList);
     }
@@ -267,6 +274,7 @@ class FilmListServiceTest {
 
         assertThat(response).isEqualTo(expectedResponse);
         assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(FILM_ID);
+        verifyNoInteractions(catalogClient);
         verify(filmListRepository, never()).save(any(FilmList.class));
         verify(filmListMapper).filmListToFilmListResponse(filmList);
     }
@@ -279,6 +287,95 @@ class FilmListServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> filmListService.addFilm(AUTH_USER, LIST_ID, FILM_ID));
 
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(catalogClient);
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
+    void shouldNotAddFilmIfFilmDoesNotExist() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+
+        doThrow(new ResourceNotFoundException("Film with id " + OTHER_FILM_ID + " not found"))
+                .when(catalogClient).requireFilmExists(OTHER_FILM_ID);
+
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                () -> filmListService.addFilm(AUTH_USER, LIST_ID, OTHER_FILM_ID));
+
+        assertThat(exception).hasMessage("Film with id " + OTHER_FILM_ID + " not found");
+        assertThat(filmList.getFilmIds()).containsExactly(FILM_ID);
+        verify(catalogClient).requireFilmExists(OTHER_FILM_ID);
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
+    void shouldNotAddFilmIfCatalogIsUnavailable() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+
+        ServiceUnavailableException catalogException =
+                new ServiceUnavailableException("Catalog service is unavailable");
+
+        doThrow(catalogException).when(catalogClient).requireFilmExists(OTHER_FILM_ID);
+
+        ServiceUnavailableException exception = assertThrows(ServiceUnavailableException.class,
+                () -> filmListService.addFilm(AUTH_USER, LIST_ID, OTHER_FILM_ID));
+
+        assertThat(exception).isSameAs(catalogException);
+        assertThat(filmList.getFilmIds()).containsExactly(FILM_ID);
+        verify(catalogClient).requireFilmExists(OTHER_FILM_ID);
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
+    void shouldNotPatchFilmsIfAddedFilmDoesNotExist() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+        ListedFilmsRequest request = new ListedFilmsRequest(Set.of(OTHER_FILM_ID), Set.of());
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+
+        doThrow(new ResourceNotFoundException("Film with id " + OTHER_FILM_ID + " not found"))
+                .when(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
+
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                () -> filmListService.patchFilms(AUTH_USER, LIST_ID, request));
+
+        assertThat(exception).hasMessage("Film with id " + OTHER_FILM_ID + " not found");
+        assertThat(filmList.getFilmIds()).containsExactly(FILM_ID);
+        verify(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
+    void shouldNotPatchFilmsIfCatalogIsUnavailable() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIds(FILM_ID));
+        ListedFilmsRequest request = new ListedFilmsRequest(Set.of(OTHER_FILM_ID), Set.of());
+        ServiceUnavailableException catalogException =
+                new ServiceUnavailableException("Catalog service is unavailable");
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        doThrow(catalogException).when(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
+
+        ServiceUnavailableException exception = assertThrows(ServiceUnavailableException.class,
+                () -> filmListService.patchFilms(AUTH_USER, LIST_ID, request));
+
+        assertThat(exception).isSameAs(catalogException);
+        assertThat(filmList.getFilmIds()).containsExactly(FILM_ID);
+        verify(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
         verify(filmListRepository, never()).save(any());
         verifyNoInteractions(filmListMapper);
     }
@@ -337,6 +434,7 @@ class FilmListServiceTest {
 
         assertThat(response).isEqualTo(expectedResponse);
         assertThat(filmList.getFilmIds()).containsExactlyInAnyOrder(FILM_ID);
+        verifyNoInteractions(catalogClient);
         verify(filmListRepository, never()).save(any(FilmList.class));
         verify(filmListMapper).filmListToFilmListResponse(filmList);
     }
