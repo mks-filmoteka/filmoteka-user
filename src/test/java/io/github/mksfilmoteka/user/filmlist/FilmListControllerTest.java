@@ -3,6 +3,8 @@ package io.github.mksfilmoteka.user.filmlist;
 import io.github.mksfilmoteka.user.auth.AuthUserConverter;
 import io.github.mksfilmoteka.user.auth.KeycloakRealmRoleConverter;
 import io.github.mksfilmoteka.user.auth.SecurityConfig;
+import io.github.mksfilmoteka.user.common.exception.ErrorCode;
+import io.github.mksfilmoteka.user.common.exception.ServiceUnavailableException;
 import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListResponse;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(FilmListController.class)
@@ -161,6 +164,20 @@ class FilmListControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().json(JSON_MAPPER.writeValueAsString(expectedResponse)));
+
+        verify(authUserConverter).from(any(Jwt.class));
+        verify(filmListService).addFilm(AUTH_USER, LIST_ID, FILM_ID);
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableWhenCatalogIsUnavailable() throws Exception {
+        when(authUserConverter.from(any(Jwt.class))).thenReturn(AUTH_USER);
+        when(filmListService.addFilm(AUTH_USER, LIST_ID, FILM_ID))
+                .thenThrow(new ServiceUnavailableException("Catalog service is unavailable"));
+
+        mockMvc.perform(put(FILM_LISTS_URL + "/{id}/films/{filmId}", LIST_ID, FILM_ID).with(jwt()))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(ErrorCode.SERVICE_UNAVAILABLE.name()));
 
         verify(authUserConverter).from(any(Jwt.class));
         verify(filmListService).addFilm(AUTH_USER, LIST_ID, FILM_ID);

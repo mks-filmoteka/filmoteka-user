@@ -1,6 +1,7 @@
 package io.github.mksfilmoteka.user.filmlist;
 
 import io.github.mksfilmoteka.user.auth.AuthUser;
+import io.github.mksfilmoteka.user.catalog.CatalogClient;
 import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -25,6 +27,7 @@ public class FilmListService {
     private final FilmListRepository filmListRepository;
     private final FilmListMapper filmListMapper;
     private final UserProfileProvisionService userProfileProvisionService;
+    private final CatalogClient catalogClient;
 
     public List<FilmListResponse> getFilmLists(AuthUser authUser) {
         UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
@@ -90,6 +93,8 @@ public class FilmListService {
     public FilmListResponse addFilm(AuthUser authUser, Long id, Long filmId) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
+        catalogClient.requireFilmExists(filmId);
+
         filmList.getFilmIds().add(filmId);
 
         FilmList saved = filmListRepository.save(filmList);
@@ -106,6 +111,14 @@ public class FilmListService {
         Set<Long> toAdd = request.addedFilmIds() == null ? Set.of() : request.addedFilmIds();
         Set<Long> toRemove = request.removedFilmIds() == null ? Set.of() : request.removedFilmIds();
         Set<Long> filmIds = filmList.getFilmIds();
+
+        Set<Long> filmIdsToValidate = new HashSet<>(toAdd);
+        filmIdsToValidate.removeAll(filmIds);
+        filmIdsToValidate.removeAll(toRemove);
+
+        if (!filmIdsToValidate.isEmpty()) {
+            catalogClient.requireFilmsExist(filmIdsToValidate);
+        }
 
         int countBefore = filmIds.size();
         filmIds.addAll(toAdd);

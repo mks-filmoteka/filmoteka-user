@@ -2,6 +2,7 @@ package io.github.mksfilmoteka.user;
 
 import io.github.mksfilmoteka.user.auth.KeycloakRealmRoleConverter;
 import io.github.mksfilmoteka.user.auth.SecurityConfig;
+import io.github.mksfilmoteka.user.catalog.CatalogClient;
 import io.github.mksfilmoteka.user.common.exception.ErrorCode;
 import io.github.mksfilmoteka.user.config.RepositoryTestConfig;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -22,6 +24,7 @@ import java.util.Set;
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
 import static io.github.mksfilmoteka.user.util.TestUtil.JSON_MAPPER;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -35,6 +38,9 @@ class FilmotekaUserApplicationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private CatalogClient catalogClient;
 
     @Test
     void shouldProvisionProfileAndManageFilmListThroughApi() throws Exception {
@@ -139,6 +145,9 @@ class FilmotekaUserApplicationTest {
                         .with(authenticatedUserJwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.name()));
+
+        verify(catalogClient).requireFilmExists(FILM_ID);
+        verify(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
     }
 
     private static RequestPostProcessor authenticatedUserJwt() {
