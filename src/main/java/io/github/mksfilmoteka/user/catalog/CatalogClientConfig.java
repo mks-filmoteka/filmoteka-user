@@ -1,5 +1,6 @@
 package io.github.mksfilmoteka.user.catalog;
 
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +10,9 @@ import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.time.Duration;
+
+import static io.github.mksfilmoteka.user.common.logging.CorrelationIdFilter.CORRELATION_ID_HEADER;
+import static io.github.mksfilmoteka.user.common.logging.CorrelationIdFilter.CORRELATION_ID_MDC_KEY;
 
 @Configuration(proxyBeanMethods = false)
 public class CatalogClientConfig {
@@ -25,7 +29,13 @@ public class CatalogClientConfig {
 
         RestClient restClient = RestClient.builder()
                 .baseUrl(baseUrl)
-                .requestFactory(requestFactory)
+                .requestInterceptor((request, body, execution) -> {
+                    String correlationId = MDC.get(CORRELATION_ID_MDC_KEY);
+                    if (correlationId != null) {
+                        request.getHeaders().set(CORRELATION_ID_HEADER, correlationId);
+                    }
+                    return execution.execute(request, body);
+                })
                 .build();
 
         RestClientAdapter adapter = RestClientAdapter.create(restClient);
