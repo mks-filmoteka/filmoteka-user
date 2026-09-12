@@ -29,6 +29,7 @@ public class CatalogClientConfig {
 
         RestClient restClient = RestClient.builder()
                 .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
                 .requestInterceptor((request, body, execution) -> {
                     String correlationId = MDC.get(CORRELATION_ID_MDC_KEY);
                     if (correlationId != null) {

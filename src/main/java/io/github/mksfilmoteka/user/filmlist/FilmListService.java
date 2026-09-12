@@ -21,7 +21,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class FilmListService {
 
     private final FilmListRepository filmListRepository;
@@ -46,7 +46,6 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(filmList);
     }
 
-    @Transactional
     public FilmListResponse createFilmList(AuthUser authUser, FilmListRequest request) {
         UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
         Long userId = userProfile.getId();
@@ -64,7 +63,6 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(saved);
     }
 
-    @Transactional
     public FilmListResponse updateFilmList(AuthUser authUser, Long id, FilmListRequest request) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -81,7 +79,6 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(saved);
     }
 
-    @Transactional
     public void deleteFilmList(AuthUser authUser, Long id) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -89,7 +86,6 @@ public class FilmListService {
         log.info("Deleted film list id={}, userId={}", id, userId);
     }
 
-    @Transactional
     public FilmListResponse addFilm(AuthUser authUser, Long id, Long filmId) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -103,7 +99,6 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(saved);
     }
 
-    @Transactional
     public FilmListResponse patchFilms(AuthUser authUser, Long id, ListedFilmsRequest request) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -140,7 +135,6 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(saved);
     }
 
-    @Transactional
     public void removeFilm(AuthUser authUser, Long id, Long filmId) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
