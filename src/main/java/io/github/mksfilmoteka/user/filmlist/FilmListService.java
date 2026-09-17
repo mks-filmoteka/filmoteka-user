@@ -146,6 +146,12 @@ public class FilmListService {
         log.info("Removed film id={} from film list id={}, userId={}", filmId, id, userId);
     }
 
+    public void removeDeletedFilmFromAllLists(Long filmId) {
+        int removedCount = filmListRepository.removeFilmFromAllLists(filmId);
+
+        log.info("Removed deleted film id={} from {} film lists", filmId, removedCount);
+    }
+
     private FilmList getFilmListOrThrow(Long userId, Long id) {
         return filmListRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Film list with id " + id + " not found"));

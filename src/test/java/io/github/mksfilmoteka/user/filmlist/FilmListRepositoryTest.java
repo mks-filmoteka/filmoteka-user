@@ -142,4 +142,38 @@ class FilmListRepositoryTest {
         assertTrue(loadedFilmList.isPresent());
         assertThat(loadedFilmList.get().getFilmIds()).containsExactly(OTHER_FILM_ID);
     }
+
+    @Test
+    void shouldRemoveFilmFromAllLists() {
+        UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
+        UserProfile otherUserProfile = entityManager.persistAndFlush(UserProfileTestData.userProfile("other-sub", "other@gmail.com"));
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList(savedUserProfile));
+        FilmList savedOtherFilmList = filmListRepository.saveAndFlush(filmList(otherUserProfile));
+
+        int removedCount = filmListRepository.removeFilmFromAllLists(FILM_ID);
+        entityManager.clear();
+
+        FilmList loadedFilmList = filmListRepository.findById(savedFilmList.getId()).orElseThrow();
+        FilmList loadedOtherFilmList = filmListRepository.findById(savedOtherFilmList.getId()).orElseThrow();
+
+        assertEquals(2, removedCount);
+        assertThat(loadedFilmList.getFilmIds()).containsExactly(OTHER_FILM_ID);
+        assertThat(loadedOtherFilmList.getFilmIds()).containsExactly(OTHER_FILM_ID);
+    }
+
+    @Test
+    void shouldReturnZeroWhenFilmIsNotInAnyList() {
+        UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
+        FilmList filmList = filmList(savedUserProfile);
+        filmList.setFilmIds(filmIds(OTHER_FILM_ID));
+        FilmList savedFilmList = filmListRepository.saveAndFlush(filmList);
+
+        int removedCount = filmListRepository.removeFilmFromAllLists(FILM_ID);
+        entityManager.clear();
+
+        FilmList loadedFilmList = filmListRepository.findById(savedFilmList.getId()).orElseThrow();
+
+        assertEquals(0, removedCount);
+        assertThat(loadedFilmList.getFilmIds()).containsExactly(OTHER_FILM_ID);
+    }
 }
