@@ -8,6 +8,12 @@ spring:
           audiences:
             - filmoteka-api
 
+  kafka:
+    consumer:
+      group-id: filmoteka-user-test
+    listener:
+      auto-startup: false
+
 logging:
   level:
     root: WARN
@@ -19,3 +25,8 @@ app:
 
   cors:
     allowed-origins: http://localhost:5173
+
+  kafka:
+    topics:
+      film-deleted:
+        name: film-deleted-test
