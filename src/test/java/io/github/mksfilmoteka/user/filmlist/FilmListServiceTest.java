@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import java.util.List;
 import java.util.Optional;
@@ -437,6 +438,39 @@ class FilmListServiceTest {
         verifyNoInteractions(catalogClient);
         verify(filmListRepository, never()).save(any(FilmList.class));
         verify(filmListMapper).filmListToFilmListResponse(filmList);
+    }
+
+    @Test
+    void shouldRemoveDeletedFilmFromAllLists() {
+        when(filmListRepository.removeFilmFromAllLists(FILM_ID)).thenReturn(2);
+
+        filmListService.removeDeletedFilmFromAllLists(FILM_ID);
+
+        verify(filmListRepository).removeFilmFromAllLists(FILM_ID);
+        verifyNoMoreInteractions(filmListRepository);
+        verifyNoInteractions(userProfileProvisionService, filmListMapper, catalogClient);
+    }
+
+    @Test
+    void shouldIgnoreDeletedFilmThatIsNotInAnyList() {
+        when(filmListRepository.removeFilmFromAllLists(FILM_ID)).thenReturn(0);
+
+        filmListService.removeDeletedFilmFromAllLists(FILM_ID);
+
+        verify(filmListRepository).removeFilmFromAllLists(FILM_ID);
+        verifyNoInteractions(userProfileProvisionService, filmListMapper, catalogClient);
+    }
+
+    @Test
+    void shouldPropagateRepositoryFailureWhenRemovingDeletedFilm() {
+        DataAccessResourceFailureException failure = new DataAccessResourceFailureException("Database unavailable");
+        when(filmListRepository.removeFilmFromAllLists(FILM_ID)).thenThrow(failure);
+
+        DataAccessResourceFailureException exception = assertThrows(DataAccessResourceFailureException.class,
+                () -> filmListService.removeDeletedFilmFromAllLists(FILM_ID));
+
+        assertThat(exception).isSameAs(failure);
+        verifyNoInteractions(userProfileProvisionService, filmListMapper, catalogClient);
     }
 
     private static Answer<Void> updateNameOnly() {
