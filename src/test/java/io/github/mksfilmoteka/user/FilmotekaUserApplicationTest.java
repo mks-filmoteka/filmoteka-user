@@ -18,12 +18,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JsonNode;
 
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
@@ -50,6 +53,9 @@ class FilmotekaUserApplicationTest {
     private FilmDeletedListener filmDeletedListener;
 
     @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
+    @Autowired
     private FilmListRepository filmListRepository;
 
     @Autowired
@@ -57,6 +63,19 @@ class FilmotekaUserApplicationTest {
 
     @MockitoBean
     private CatalogClient catalogClient;
+
+    @Test
+    void shouldRegisterOneListenerForEachFilmDeletionTopic() {
+        assertThat(kafkaListenerEndpointRegistry.getListenerContainers())
+                .flatExtracting(container -> Arrays.asList(Objects.requireNonNull(
+                        container.getContainerProperties().getTopics(), "Listener must have explicit topics")))
+                .containsExactlyInAnyOrder(
+                        "film-deleted-test",
+                        "film-deleted-test.user.retry-1000",
+                        "film-deleted-test.user.retry-2000",
+                        "film-deleted-test.user.dlt"
+                );
+    }
 
     @Test
     void shouldCommitFilmDeletionAndHandleRedelivery() {
