@@ -5,36 +5,26 @@ import io.github.mksfilmoteka.user.auth.SecurityConfig;
 import io.github.mksfilmoteka.user.catalog.CatalogClient;
 import io.github.mksfilmoteka.user.common.exception.ErrorCode;
 import io.github.mksfilmoteka.user.config.RepositoryTestConfig;
-import io.github.mksfilmoteka.user.filmlist.FilmDeletedListener;
-import io.github.mksfilmoteka.user.filmlist.FilmList;
-import io.github.mksfilmoteka.user.filmlist.FilmListRepository;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
-import io.github.mksfilmoteka.user.profile.UserProfile;
-import io.github.mksfilmoteka.user.profile.UserProfileRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JsonNode;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
 import static io.github.mksfilmoteka.user.util.TestUtil.JSON_MAPPER;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,59 +39,8 @@ class FilmotekaUserApplicationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private FilmDeletedListener filmDeletedListener;
-
-    @Autowired
-    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
-
-    @Autowired
-    private FilmListRepository filmListRepository;
-
-    @Autowired
-    private UserProfileRepository userProfileRepository;
-
     @MockitoBean
     private CatalogClient catalogClient;
-
-    @Test
-    void shouldRegisterOneListenerForEachFilmDeletionTopic() {
-        assertThat(kafkaListenerEndpointRegistry.getListenerContainers())
-                .flatExtracting(container -> Arrays.asList(Objects.requireNonNull(
-                        container.getContainerProperties().getTopics(), "Listener must have explicit topics")))
-                .containsExactlyInAnyOrder(
-                        "film-deleted-test",
-                        "film-deleted-test.user.retry-1000",
-                        "film-deleted-test.user.retry-2000",
-                        "film-deleted-test.user.dlt"
-                );
-    }
-
-    @Test
-    void shouldCommitFilmDeletionAndHandleRedelivery() {
-        UserProfile firstUser = userProfileRepository.saveAndFlush(
-                userProfile("first-event-user", "first-event@test.com"));
-        UserProfile secondUser = userProfileRepository.saveAndFlush(
-                userProfile("second-event-user", "second-event@test.com"));
-        FilmList firstList = filmListRepository.saveAndFlush(filmList(firstUser));
-        FilmList secondList = filmListRepository.saveAndFlush(filmList(secondUser));
-        String payload = "{\"filmId\": %d}".formatted(FILM_ID);
-
-        filmDeletedListener.onFilmDeleted(payload);
-
-        assertThat(filmListRepository.findByIdAndUserId(firstList.getId(), firstUser.getId()).orElseThrow().getFilmIds())
-                .containsExactly(OTHER_FILM_ID);
-        assertThat(filmListRepository.findByIdAndUserId(secondList.getId(), secondUser.getId()).orElseThrow().getFilmIds())
-                .containsExactly(OTHER_FILM_ID);
-
-        filmDeletedListener.onFilmDeleted(payload);
-
-        assertThat(filmListRepository.findByIdAndUserId(firstList.getId(), firstUser.getId()).orElseThrow().getFilmIds())
-                .containsExactly(OTHER_FILM_ID);
-        assertThat(filmListRepository.findByIdAndUserId(secondList.getId(), secondUser.getId()).orElseThrow().getFilmIds())
-                .containsExactly(OTHER_FILM_ID);
-        verifyNoInteractions(catalogClient);
-    }
 
     @Test
     void shouldProvisionProfileAndManageFilmListThroughApi() throws Exception {

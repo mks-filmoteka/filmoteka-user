@@ -18,7 +18,7 @@ public class FilmDeletedListener {
     private final FilmListService filmListService;
 
     @RetryableTopic(
-            backOff = @BackOff(multiplier = 2.0),
+            backOff = @BackOff(delayString = "${app.kafka.retry-delay}", multiplier = 2.0),
             retryTopicSuffix = ".user.retry",
             dltTopicSuffix = ".user.dlt",
             autoStartDltHandler = "false"
