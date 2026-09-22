@@ -52,6 +52,12 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
   kafka:
+    admin:
+      operation-timeout: 5s
+      close-timeout: 2s
+    properties:
+      "[reconnect.backoff.ms]": 1000
+      "[reconnect.backoff.max.ms]": 10000
     retry-delay: 1s
     topics:
       film-deleted:
@@ -61,6 +67,8 @@ logging:
   level:
     root: INFO
     io.github.mksfilmoteka.user: DEBUG
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
   pattern:
     level: "%5p [correlationId=%X{correlationId:-}]"
 
