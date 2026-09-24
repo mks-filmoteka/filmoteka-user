@@ -23,20 +23,18 @@ public class UserProfileProvisionService {
     }
 
     private UserProfile createUserProfile(AuthUser authUser) {
-        if (userProfileRepository.existsByEmail(authUser.email())) {
-            throw new ConflictException("User profile with this email already exists");
+        int inserted = userProfileRepository.insertIfAbsent(
+                authUser.identitySub(),
+                authUser.email(),
+                authUser.displayName()
+        );
+        UserProfile userProfile = userProfileRepository
+                .findByIdentitySub(authUser.identitySub())
+                .orElseThrow(() -> new ConflictException("User profile with this email already exists"));
+        if (inserted == 1) {
+            log.info("Provisioned user profile id={}", userProfile.getId());
         }
-
-        UserProfile userProfile = new UserProfile();
-        userProfile.setIdentitySub(authUser.identitySub());
-        userProfile.setEmail(authUser.email());
-        userProfile.setDisplayName(authUser.displayName());
-
-        UserProfile saved = userProfileRepository.save(userProfile);
-
-        log.info("Provisioned user profile id={}", saved.getId());
-
-        return saved;
+        return synchronizeEmail(userProfile, authUser.email());
     }
 
     private UserProfile synchronizeEmail(UserProfile userProfile, String authEmail) {

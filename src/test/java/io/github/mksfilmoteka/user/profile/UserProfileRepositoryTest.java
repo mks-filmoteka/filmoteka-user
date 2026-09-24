@@ -76,6 +76,52 @@ class UserProfileRepositoryTest {
     }
 
     @Test
+    void shouldInsertUserProfileIfAbsent() {
+        int inserted = userProfileRepository.insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
+
+        UserProfile loadedProfile = userProfileRepository.findByIdentitySub(IDENTITY_SUB).orElseThrow();
+
+        assertEquals(1, inserted);
+        assertNotNull(loadedProfile.getId());
+        assertEquals(EMAIL, loadedProfile.getEmail());
+        assertEquals(DISPLAY_NAME, loadedProfile.getDisplayName());
+        assertNotNull(loadedProfile.getCreatedTs());
+        assertNotNull(loadedProfile.getUpdatedTs());
+        assertEquals(1, userProfileRepository.count());
+    }
+
+    @Test
+    void shouldIgnoreInsertWhenProfileAlreadyExists() {
+        UserProfile savedProfile = userProfileRepository.saveAndFlush(userProfile());
+
+        int inserted = userProfileRepository.insertIfAbsent(IDENTITY_SUB, NEW_EMAIL, UPDATED_DISPLAY_NAME);
+
+        UserProfile loadedProfile = userProfileRepository.findByIdentitySub(IDENTITY_SUB).orElseThrow();
+
+        assertEquals(0, inserted);
+        assertEquals(savedProfile.getId(), loadedProfile.getId());
+        assertEquals(DISPLAY_NAME, loadedProfile.getDisplayName());
+        assertFalse(userProfileRepository.existsByEmail(NEW_EMAIL));
+        assertEquals(1, userProfileRepository.count());
+    }
+
+    @Test
+    void shouldIgnoreInsertWhenEmailBelongsToAnotherIdentity() {
+        UserProfile savedProfile = userProfileRepository.saveAndFlush(userProfile());
+
+        int inserted = userProfileRepository.insertIfAbsent("other-sub", EMAIL, UPDATED_DISPLAY_NAME);
+
+        UserProfile loadedProfile = userProfileRepository.findByEmail(EMAIL).orElseThrow();
+
+        assertEquals(0, inserted);
+        assertEquals(savedProfile.getId(), loadedProfile.getId());
+        assertEquals(IDENTITY_SUB, loadedProfile.getIdentitySub());
+        assertEquals(DISPLAY_NAME, loadedProfile.getDisplayName());
+        assertFalse(userProfileRepository.existsByIdentitySub("other-sub"));
+        assertEquals(1, userProfileRepository.count());
+    }
+
+    @Test
     void shouldThrowOnDuplicateIdentitySubConflict() {
         userProfileRepository.saveAndFlush(userProfile());
 
