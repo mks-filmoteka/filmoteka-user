@@ -38,33 +38,52 @@ class UserProfileProvisionServiceTest {
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
 
         verify(userProfileRepository).findByIdentitySub(IDENTITY_SUB);
+        verify(userProfileRepository, never()).insertIfAbsent(anyString(), anyString(), anyString());
         verify(userProfileRepository, never()).existsByEmail(anyString());
         verify(userProfileRepository, never()).save(any());
     }
 
     @Test
     void shouldCreateUserProfile() {
+        UserProfile userProfile = loadedUserProfile();
         AuthUser authUser = new AuthUser(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
 
-        when(userProfileRepository.findByIdentitySub(IDENTITY_SUB)).thenReturn(Optional.empty());
-        when(userProfileRepository.existsByEmail(EMAIL)).thenReturn(false);
-        when(userProfileRepository.save(any(UserProfile.class)))
-                .thenAnswer(invocation -> {
-                    UserProfile userProfile = invocation.getArgument(0);
-                    userProfile.setId(USER_PROFILE_ID);
-                    return userProfile;
-                });
+        when(userProfileRepository.findByIdentitySub(IDENTITY_SUB))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(userProfile));
+
+        when(userProfileRepository.insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME)).thenReturn(1);
 
         UserProfile result = provisionService.getOrCreate(authUser);
 
+        assertThat(result).isSameAs(userProfile);
         assertThat(result.getId()).isEqualTo(USER_PROFILE_ID);
         assertThat(result.getIdentitySub()).isEqualTo(IDENTITY_SUB);
         assertThat(result.getEmail()).isEqualTo(EMAIL);
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
 
-        verify(userProfileRepository).findByIdentitySub(IDENTITY_SUB);
-        verify(userProfileRepository).existsByEmail(EMAIL);
-        verify(userProfileRepository).save(any(UserProfile.class));
+        verify(userProfileRepository).insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
+        verify(userProfileRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnProfileCreatedByAnotherRequest() {
+        UserProfile existingProfile = loadedUserProfile();
+        AuthUser authUser = new AuthUser(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
+
+        when(userProfileRepository.findByIdentitySub(IDENTITY_SUB))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existingProfile));
+
+        when(userProfileRepository.insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME)).thenReturn(0);
+
+        UserProfile result = provisionService.getOrCreate(authUser);
+
+        assertThat(result).isSameAs(existingProfile);
+        assertThat(result.getIdentitySub()).isEqualTo(IDENTITY_SUB);
+
+        verify(userProfileRepository).insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
+        verify(userProfileRepository, never()).save(any());
     }
 
     @Test
@@ -92,11 +111,11 @@ class UserProfileProvisionServiceTest {
         AuthUser authUser = new AuthUser(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
 
         when(userProfileRepository.findByIdentitySub(IDENTITY_SUB)).thenReturn(Optional.empty());
-        when(userProfileRepository.existsByEmail(EMAIL)).thenReturn(true);
+        when(userProfileRepository.insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME)).thenReturn(0);
 
         assertThrows(ConflictException.class, () -> provisionService.getOrCreate(authUser));
 
-        verify(userProfileRepository).existsByEmail(EMAIL);
+        verify(userProfileRepository).insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
         verify(userProfileRepository, never()).save(any());
     }
 
