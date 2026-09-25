@@ -23,18 +23,29 @@ public class CatalogClient {
     }
 
     public void requireFilmsExist(Set<Long> filmIds) {
-        if (filmIds.isEmpty()) return;
-        FilmExistenceResponse response;
+        Set<Long> missingFilmIds = findMissingFilmIds(filmIds);
 
+        if (!missingFilmIds.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "Films not found: " + missingFilmIds
+            );
+        }
+    }
+
+    public Set<Long> findMissingFilmIds(Set<Long> filmIds) {
+        if (filmIds.isEmpty()) {
+            return Set.of();
+        }
+        FilmExistenceResponse response;
         try {
             response = catalogApi.checkFilmsExistence(new FilmExistenceRequest(filmIds));
         } catch (RestClientException ex) {
-            log.warn("Catalog request failed while validating film ids={}", filmIds, ex);
+            log.warn("Catalog request failed while checking film ids={}", filmIds, ex);
             throw new ServiceUnavailableException("Catalog service is unavailable", ex);
         }
-
-        if (!response.missingFilmIds().isEmpty()) {
-            throw new ResourceNotFoundException("Films not found: " + response.missingFilmIds());
+        if (response == null || response.missingFilmIds() == null) {
+            throw new ServiceUnavailableException("Catalog returned an invalid film existence response");
         }
+        return response.missingFilmIds();
     }
 }

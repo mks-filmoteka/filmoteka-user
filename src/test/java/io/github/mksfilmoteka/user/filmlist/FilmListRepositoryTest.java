@@ -9,13 +9,14 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Optional;
 
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
-import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
+import static io.github.mksfilmoteka.user.profile.UserProfileTestData.userProfile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -223,5 +224,31 @@ class FilmListRepositoryTest {
 
         assertEquals(0, removedCount);
         assertThat(loadedFilmList.getFilmIds()).containsExactly(OTHER_FILM_ID);
+    }
+
+    @Test
+    void shouldReadDistinctFilmIdsInBatchesAfterCleanup() {
+        UserProfile user = entityManager.persistAndFlush(userProfile());
+        FilmList firstList = filmList(user);
+        firstList.setFilmIds(filmIds(30L, 10L, 20L));
+        FilmList secondList = filmList(user);
+        secondList.setName("Another list");
+        secondList.setFilmIds(filmIds(40L, 20L, 10L));
+
+        filmListRepository.saveAndFlush(firstList);
+        filmListRepository.saveAndFlush(secondList);
+
+        List<Long> firstBatch = filmListRepository.findDistinctFilmIdsAfter(0L, Limit.of(2));
+
+        assertThat(firstBatch).containsExactly(10L, 20L);
+
+        filmListRepository.removeFilmFromAllLists(10L);
+        filmListRepository.removeFilmFromAllLists(20L);
+        entityManager.clear();
+
+        List<Long> secondBatch = filmListRepository.findDistinctFilmIdsAfter(firstBatch.getLast(), Limit.of(2));
+
+        assertThat(secondBatch).containsExactly(30L, 40L);
+        assertThat(filmListRepository.findDistinctFilmIdsAfter(secondBatch.getLast(), Limit.of(2))).isEmpty();
     }
 }

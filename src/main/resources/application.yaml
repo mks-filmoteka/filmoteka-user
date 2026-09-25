@@ -63,6 +63,9 @@ app:
       film-deleted:
         name: ${KAFKA_FILM_DELETED_TOPIC}
 
+  reconciliation:
+    enabled: true
+
 logging:
   level:
     root: INFO
