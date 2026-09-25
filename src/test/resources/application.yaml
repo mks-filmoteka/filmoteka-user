@@ -33,3 +33,6 @@ app:
     topics:
       film-deleted:
         name: film-deleted-test
+
+  reconciliation:
+    enabled: false

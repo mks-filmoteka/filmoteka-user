@@ -1,6 +1,7 @@
 package io.github.mksfilmoteka.user.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -114,6 +116,7 @@ public class GlobalExceptionHandler {
             Exception ex, HttpServletRequest request) {
 
         String message = "Unexpected error occurred";
+        log.error("Unexpected error. method={}, path={}", request.getMethod(), request.getRequestURI(), ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, message, request, ErrorCode.INTERNAL_ERROR));

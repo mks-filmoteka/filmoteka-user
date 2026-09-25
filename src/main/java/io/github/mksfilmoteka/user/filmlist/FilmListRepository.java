@@ -1,5 +1,6 @@
 package io.github.mksfilmoteka.user.filmlist;
 
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -21,4 +22,13 @@ public interface FilmListRepository extends JpaRepository<FilmList, Long> {
     @Modifying
     @Query(value = "DELETE FROM {h-schema}list_item WHERE film_id = :filmId", nativeQuery = true)
     int removeFilmFromAllLists(@Param("filmId") Long filmId);
+
+    @Query("""
+            SELECT DISTINCT filmId
+            FROM FilmList filmList
+            JOIN filmList.filmIds filmId
+            WHERE filmId > :afterFilmId
+            ORDER BY filmId ASC
+            """)
+    List<Long> findDistinctFilmIdsAfter(@Param("afterFilmId") Long afterFilmId, Limit limit);
 }
