@@ -16,6 +16,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     private static final String[] SWAGGER_PATHS = {"/swagger-ui/**", "/swagger-ui.html", "/api-docs", "/api-docs/**"};
+    private static final String ADMIN_ROLE = "ADMIN";
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter) {
@@ -29,6 +30,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                        .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole(ADMIN_ROLE)
                         .requestMatchers(SWAGGER_PATHS).permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
