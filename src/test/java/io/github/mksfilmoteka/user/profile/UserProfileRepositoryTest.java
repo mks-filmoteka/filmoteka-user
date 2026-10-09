@@ -47,30 +47,10 @@ class UserProfileRepositoryTest {
     }
 
     @Test
-    void shouldFindUserProfileByEmail() {
-        UserProfile savedProfile = userProfileRepository.saveAndFlush(userProfile());
-
-        Optional<UserProfile> loadedProfile = userProfileRepository.findByEmail(savedProfile.getEmail());
-
-        assertNotNull(savedProfile.getId());
-        assertTrue(loadedProfile.isPresent());
-        assertEquals(EMAIL, loadedProfile.get().getEmail());
-    }
-
-    @Test
     void shouldCheckIfUserProfileExistsByIdentitySub() {
         userProfileRepository.saveAndFlush(userProfile());
 
         boolean exists = userProfileRepository.existsByIdentitySub(IDENTITY_SUB);
-
-        assertTrue(exists);
-    }
-
-    @Test
-    void shouldCheckIfUserProfileExistsByEmail() {
-        userProfileRepository.saveAndFlush(userProfile());
-
-        boolean exists = userProfileRepository.existsByEmail(EMAIL);
 
         assertTrue(exists);
     }
@@ -101,24 +81,23 @@ class UserProfileRepositoryTest {
         assertEquals(0, inserted);
         assertEquals(savedProfile.getId(), loadedProfile.getId());
         assertEquals(DISPLAY_NAME, loadedProfile.getDisplayName());
-        assertFalse(userProfileRepository.existsByEmail(NEW_EMAIL));
+        assertEquals(EMAIL, loadedProfile.getEmail());
         assertEquals(1, userProfileRepository.count());
     }
 
     @Test
-    void shouldIgnoreInsertWhenEmailBelongsToAnotherIdentity() {
-        UserProfile savedProfile = userProfileRepository.saveAndFlush(userProfile());
+    void shouldInsertWhenEmailBelongsToAnotherIdentity() {
+        userProfileRepository.saveAndFlush(userProfile());
 
         int inserted = userProfileRepository.insertIfAbsent("other-sub", EMAIL, UPDATED_DISPLAY_NAME);
 
-        UserProfile loadedProfile = userProfileRepository.findByEmail(EMAIL).orElseThrow();
+        UserProfile loadedProfile = userProfileRepository.findByIdentitySub("other-sub").orElseThrow();
 
-        assertEquals(0, inserted);
-        assertEquals(savedProfile.getId(), loadedProfile.getId());
-        assertEquals(IDENTITY_SUB, loadedProfile.getIdentitySub());
-        assertEquals(DISPLAY_NAME, loadedProfile.getDisplayName());
-        assertFalse(userProfileRepository.existsByIdentitySub("other-sub"));
-        assertEquals(1, userProfileRepository.count());
+        assertEquals(1, inserted);
+        assertEquals(EMAIL, loadedProfile.getEmail());
+        assertEquals(UPDATED_DISPLAY_NAME, loadedProfile.getDisplayName());
+        assertTrue(userProfileRepository.existsByIdentitySub(IDENTITY_SUB));
+        assertEquals(2, userProfileRepository.count());
     }
 
     @Test
@@ -131,11 +110,11 @@ class UserProfileRepositoryTest {
     }
 
     @Test
-    void shouldThrowOnDuplicateEmailConflict() {
+    void shouldAllowSameEmailForDifferentIdentities() {
         userProfileRepository.saveAndFlush(userProfile());
 
-        UserProfile duplicate = UserProfileTestData.userProfile("other-sub", EMAIL);
+        userProfileRepository.saveAndFlush(UserProfileTestData.userProfile("other-sub", EMAIL));
 
-        assertThrows(DataIntegrityViolationException.class, () -> userProfileRepository.saveAndFlush(duplicate));
+        assertEquals(2, userProfileRepository.count());
     }
 }

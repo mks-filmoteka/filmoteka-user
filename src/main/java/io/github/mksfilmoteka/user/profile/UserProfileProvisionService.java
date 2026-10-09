@@ -1,7 +1,6 @@
 package io.github.mksfilmoteka.user.profile;
 
 import io.github.mksfilmoteka.user.auth.AuthUser;
-import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -11,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserProfileProvisionService {
+
+    private static final int MAX_DISPLAY_NAME_LENGTH = 100;
 
     private final UserProfileRepository userProfileRepository;
 
@@ -23,14 +24,19 @@ public class UserProfileProvisionService {
     }
 
     private UserProfile createUserProfile(AuthUser authUser) {
+        String displayName = authUser.displayName();
+        if (displayName.length() > MAX_DISPLAY_NAME_LENGTH) {
+            displayName = displayName.substring(0, MAX_DISPLAY_NAME_LENGTH);
+        }
+
         int inserted = userProfileRepository.insertIfAbsent(
                 authUser.identitySub(),
                 authUser.email(),
-                authUser.displayName()
+                displayName
         );
         UserProfile userProfile = userProfileRepository
                 .findByIdentitySub(authUser.identitySub())
-                .orElseThrow(() -> new ConflictException("User profile with this email already exists"));
+                .orElseThrow(() -> new IllegalStateException("User profile was not found after provisioning"));
         if (inserted == 1) {
             log.info("Provisioned user profile id={}", userProfile.getId());
         }
@@ -40,10 +46,6 @@ public class UserProfileProvisionService {
     private UserProfile synchronizeEmail(UserProfile userProfile, String authEmail) {
         if (userProfile.getEmail().equals(authEmail)) {
             return userProfile;
-        }
-
-        if (userProfileRepository.existsByEmail(authEmail)) {
-            throw new ConflictException("User profile with this email already exists");
         }
 
         userProfile.setEmail(authEmail);
