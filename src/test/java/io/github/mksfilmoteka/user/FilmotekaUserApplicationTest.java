@@ -8,6 +8,7 @@ import io.github.mksfilmoteka.user.config.RepositoryTestConfig;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
 import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import org.junit.jupiter.api.Test;
+import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -16,14 +17,19 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JsonNode;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import static io.github.mksfilmoteka.user.filmlist.FilmListTestData.*;
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.*;
 import static io.github.mksfilmoteka.user.util.TestUtil.JSON_MAPPER;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -109,6 +115,14 @@ class FilmotekaUserApplicationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.name()));
 
+        List<Boolean> transactionActiveDuringCatalogCalls = new ArrayList<>();
+        Answer<Void> recordTransactionState = _ -> {
+            transactionActiveDuringCatalogCalls.add(TransactionSynchronizationManager.isActualTransactionActive());
+            return null;
+        };
+        doAnswer(recordTransactionState).when(catalogClient).requireFilmExists(FILM_ID);
+        doAnswer(recordTransactionState).when(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
+
         mockMvc.perform(put(FILM_LISTS_URL + "/{id}/films/{filmId}", filmListId, FILM_ID)
                         .with(authenticatedUserJwt()))
                 .andExpect(status().isOk())
@@ -148,6 +162,7 @@ class FilmotekaUserApplicationTest {
 
         verify(catalogClient).requireFilmExists(FILM_ID);
         verify(catalogClient).requireFilmsExist(filmIds(OTHER_FILM_ID));
+        assertThat(transactionActiveDuringCatalogCalls).containsExactly(false, false);
     }
 
     private static RequestPostProcessor authenticatedUserJwt() {

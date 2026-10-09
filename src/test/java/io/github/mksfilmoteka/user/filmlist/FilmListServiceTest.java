@@ -15,9 +15,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +46,9 @@ class FilmListServiceTest {
 
     @Mock
     private CatalogClient catalogClient;
+
+    @Spy
+    private TransactionTemplate transactionTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
 
     @InjectMocks
     private FilmListService filmListService;

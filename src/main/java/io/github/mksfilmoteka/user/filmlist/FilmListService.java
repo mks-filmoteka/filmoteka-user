@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.HashSet;
 import java.util.List;
@@ -22,7 +23,6 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class FilmListService {
 
     static final int MAX_LISTS_PER_USER = 50;
@@ -32,6 +32,7 @@ public class FilmListService {
     private final FilmListMapper filmListMapper;
     private final UserProfileProvisionService userProfileProvisionService;
     private final CatalogClient catalogClient;
+    private final TransactionTemplate transactionTemplate;
 
     public List<FilmListResponse> getFilmLists(AuthUser authUser) {
         UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
@@ -50,6 +51,7 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(filmList);
     }
 
+    @Transactional
     public FilmListResponse createFilmList(AuthUser authUser, FilmListRequest request) {
         UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
         Long userId = userProfile.getId();
@@ -71,6 +73,7 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(saved);
     }
 
+    @Transactional
     public FilmListResponse updateFilmList(AuthUser authUser, Long id, FilmListRequest request) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -87,6 +90,7 @@ public class FilmListService {
         return filmListMapper.filmListToFilmListResponse(saved);
     }
 
+    @Transactional
     public void deleteFilmList(AuthUser authUser, Long id) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -105,12 +109,15 @@ public class FilmListService {
 
         catalogClient.requireFilmExists(filmId);
 
-        filmList.getFilmIds().add(filmId);
+        return transactionTemplate.execute(_ -> {
+            FilmList currentFilmList = getFilmListOrThrow(userId, id);
+            currentFilmList.getFilmIds().add(filmId);
 
-        FilmList saved = filmListRepository.save(filmList);
-        log.info("Added film id={} to film list id={}, userId={}", filmId, saved.getId(), userId);
+            FilmList saved = filmListRepository.save(currentFilmList);
+            log.info("Added film id={} to film list id={}, userId={}", filmId, saved.getId(), userId);
 
-        return filmListMapper.filmListToFilmListResponse(saved);
+            return filmListMapper.filmListToFilmListResponse(saved);
+        });
     }
 
     public FilmListResponse patchFilms(AuthUser authUser, Long id, ListedFilmsRequest request) {
@@ -137,26 +144,32 @@ public class FilmListService {
             catalogClient.requireFilmsExist(filmIdsToValidate);
         }
 
-        int countBefore = filmIds.size();
-        filmIds.addAll(toAdd);
-        int addedCount = filmIds.size() - countBefore;
+        return transactionTemplate.execute(_ -> {
+            FilmList currentFilmList = getFilmListOrThrow(userId, id);
+            Set<Long> currentFilmIds = currentFilmList.getFilmIds();
 
-        countBefore = filmIds.size();
-        filmIds.removeAll(toRemove);
-        int removedCount = countBefore - filmIds.size();
+            int countBefore = currentFilmIds.size();
+            currentFilmIds.addAll(toAdd);
+            int addedCount = currentFilmIds.size() - countBefore;
 
-        if (addedCount == 0 && removedCount == 0) {
-            log.debug("No film changes applied for film list id={}, userId={}", id, userId);
-            return filmListMapper.filmListToFilmListResponse(filmList);
-        }
+            countBefore = currentFilmIds.size();
+            currentFilmIds.removeAll(toRemove);
+            int removedCount = countBefore - currentFilmIds.size();
 
-        FilmList saved = filmListRepository.save(filmList);
-        log.info("Patched film list id={}, userId={}, films added={}, films removed={}",
-                id, userId, addedCount, removedCount);
+            if (addedCount == 0 && removedCount == 0) {
+                log.debug("No film changes applied for film list id={}, userId={}", id, userId);
+                return filmListMapper.filmListToFilmListResponse(currentFilmList);
+            }
 
-        return filmListMapper.filmListToFilmListResponse(saved);
+            FilmList saved = filmListRepository.save(currentFilmList);
+            log.info("Patched film list id={}, userId={}, films added={}, films removed={}",
+                    id, userId, addedCount, removedCount);
+
+            return filmListMapper.filmListToFilmListResponse(saved);
+        });
     }
 
+    @Transactional
     public void removeFilm(AuthUser authUser, Long id, Long filmId) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
@@ -168,6 +181,7 @@ public class FilmListService {
         log.info("Removed film id={} from film list id={}, userId={}", filmId, id, userId);
     }
 
+    @Transactional
     public void removeDeletedFilmFromAllLists(Long filmId) {
         int removedCount = filmListRepository.removeFilmFromAllLists(filmId);
 
