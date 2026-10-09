@@ -1,7 +1,6 @@
 package io.github.mksfilmoteka.user.profile;
 
 import io.github.mksfilmoteka.user.auth.AuthUser;
-import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,7 +38,6 @@ class UserProfileProvisionServiceTest {
 
         verify(userProfileRepository).findByIdentitySub(IDENTITY_SUB);
         verify(userProfileRepository, never()).insertIfAbsent(anyString(), anyString(), anyString());
-        verify(userProfileRepository, never()).existsByEmail(anyString());
         verify(userProfileRepository, never()).save(any());
     }
 
@@ -64,6 +62,21 @@ class UserProfileProvisionServiceTest {
 
         verify(userProfileRepository).insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
         verify(userProfileRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldTruncateLongDisplayNameWhenCreatingProfile() {
+        String truncatedName = "a".repeat(100);
+        AuthUser authUser = new AuthUser(IDENTITY_SUB, EMAIL, "a".repeat(150));
+
+        when(userProfileRepository.findByIdentitySub(IDENTITY_SUB))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(loadedUserProfile()));
+        when(userProfileRepository.insertIfAbsent(IDENTITY_SUB, EMAIL, truncatedName)).thenReturn(1);
+
+        provisionService.getOrCreate(authUser);
+
+        verify(userProfileRepository).insertIfAbsent(IDENTITY_SUB, EMAIL, truncatedName);
     }
 
     @Test
@@ -92,7 +105,6 @@ class UserProfileProvisionServiceTest {
         AuthUser authUser = new AuthUser(IDENTITY_SUB, NEW_EMAIL, "token display name");
 
         when(userProfileRepository.findByIdentitySub(IDENTITY_SUB)).thenReturn(Optional.of(userProfile));
-        when(userProfileRepository.existsByEmail(NEW_EMAIL)).thenReturn(false);
         when(userProfileRepository.save(userProfile)).thenReturn(userProfile);
 
         UserProfile result = provisionService.getOrCreate(authUser);
@@ -102,35 +114,19 @@ class UserProfileProvisionServiceTest {
         assertThat(result.getDisplayName()).isEqualTo(DISPLAY_NAME);
 
         verify(userProfileRepository).findByIdentitySub(IDENTITY_SUB);
-        verify(userProfileRepository).existsByEmail(NEW_EMAIL);
         verify(userProfileRepository).save(userProfile);
     }
 
     @Test
-    void shouldRejectCreationWhenEmailAlreadyExists() {
+    void shouldFailWhenProfileIsMissingAfterInsert() {
         AuthUser authUser = new AuthUser(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
 
         when(userProfileRepository.findByIdentitySub(IDENTITY_SUB)).thenReturn(Optional.empty());
         when(userProfileRepository.insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME)).thenReturn(0);
 
-        assertThrows(ConflictException.class, () -> provisionService.getOrCreate(authUser));
+        assertThrows(IllegalStateException.class, () -> provisionService.getOrCreate(authUser));
 
         verify(userProfileRepository).insertIfAbsent(IDENTITY_SUB, EMAIL, DISPLAY_NAME);
-        verify(userProfileRepository, never()).save(any());
-    }
-
-    @Test
-    void shouldRejectEmailSynchronizationWhenEmailAlreadyExists() {
-        UserProfile userProfile = loadedUserProfile();
-        AuthUser authUser = new AuthUser(IDENTITY_SUB, NEW_EMAIL, "token display name");
-
-        when(userProfileRepository.findByIdentitySub(IDENTITY_SUB)).thenReturn(Optional.of(userProfile));
-        when(userProfileRepository.existsByEmail(NEW_EMAIL)).thenReturn(true);
-
-        assertThrows(ConflictException.class, () -> provisionService.getOrCreate(authUser));
-        assertThat(userProfile.getEmail()).isEqualTo(EMAIL);
-
-        verify(userProfileRepository).existsByEmail(NEW_EMAIL);
         verify(userProfileRepository, never()).save(any());
     }
 }

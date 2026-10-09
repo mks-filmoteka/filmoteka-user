@@ -16,10 +16,7 @@ import static lombok.AccessLevel.PRIVATE;
 @Entity
 @Table(
         name = "user_profile",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = "identity_sub"),
-                @UniqueConstraint(columnNames = "email")
-        }
+        uniqueConstraints = @UniqueConstraint(columnNames = "identity_sub")
 )
 public class UserProfile extends BaseEntity {
 
