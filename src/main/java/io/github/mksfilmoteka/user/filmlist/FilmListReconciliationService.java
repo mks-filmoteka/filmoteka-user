@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class FilmListReconciliationService {
 
     private static final int BATCH_SIZE = 200;
+    private static final int GUARD_MIN_BATCH_SIZE = 10;
 
     private final FilmListRepository filmListRepository;
     private final CatalogClient catalogClient;
@@ -35,10 +36,17 @@ public class FilmListReconciliationService {
                 return;
             }
             Set<Long> missingFilmIds = catalogClient.findMissingFilmIds(Set.copyOf(filmIds));
+            afterFilmId = filmIds.getLast();
+
+            if (filmIds.size() >= GUARD_MIN_BATCH_SIZE && missingFilmIds.size() * 2 > filmIds.size()) {
+                log.error("Skipped film-list reconciliation batch: catalog reported {} of {} films missing",
+                        missingFilmIds.size(), filmIds.size());
+                continue;
+            }
+
             for (Long filmId : missingFilmIds) {
                 filmListService.removeDeletedFilmFromAllLists(filmId);
             }
-            afterFilmId = filmIds.getLast();
         }
     }
 

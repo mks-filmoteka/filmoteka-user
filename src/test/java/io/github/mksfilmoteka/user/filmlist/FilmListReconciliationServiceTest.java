@@ -57,6 +57,48 @@ class FilmListReconciliationServiceTest {
     }
 
     @Test
+    void shouldSkipBatchWhenMoreThanHalfIsReportedMissing() {
+        List<Long> suspiciousBatch = List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
+        when(filmListRepository.findDistinctFilmIdsAfter(anyLong(), any(Limit.class)))
+                .thenReturn(suspiciousBatch)
+                .thenReturn(List.of(20L, 30L))
+                .thenReturn(List.of());
+        when(catalogClient.findMissingFilmIds(Set.copyOf(suspiciousBatch))).thenReturn(Set.of(1L, 2L, 3L, 4L, 5L, 6L));
+        when(catalogClient.findMissingFilmIds(Set.of(20L, 30L))).thenReturn(Set.of(30L));
+
+        reconciliationService.reconcile();
+
+        verify(filmListService).removeDeletedFilmFromAllLists(30L);
+        verifyNoMoreInteractions(filmListService);
+    }
+
+    @Test
+    void shouldRemoveMissingFilmsWhenExactlyHalfIsReportedMissing() {
+        List<Long> batch = List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
+        when(filmListRepository.findDistinctFilmIdsAfter(anyLong(), any(Limit.class)))
+                .thenReturn(batch)
+                .thenReturn(List.of());
+        when(catalogClient.findMissingFilmIds(Set.copyOf(batch))).thenReturn(Set.of(1L, 2L, 3L, 4L, 5L));
+
+        reconciliationService.reconcile();
+
+        verify(filmListService, times(5)).removeDeletedFilmFromAllLists(anyLong());
+    }
+
+    @Test
+    void shouldNotApplyGuardToSmallBatch() {
+        when(filmListRepository.findDistinctFilmIdsAfter(anyLong(), any(Limit.class)))
+                .thenReturn(List.of(10L, 20L))
+                .thenReturn(List.of());
+        when(catalogClient.findMissingFilmIds(Set.of(10L, 20L))).thenReturn(Set.of(10L, 20L));
+
+        reconciliationService.reconcile();
+
+        verify(filmListService).removeDeletedFilmFromAllLists(10L);
+        verify(filmListService).removeDeletedFilmFromAllLists(20L);
+    }
+
+    @Test
     void shouldStopWhenCatalogIsUnavailable() {
         when(filmListRepository.findDistinctFilmIdsAfter(anyLong(), any(Limit.class))).thenReturn(List.of(10L, 20L));
         ServiceUnavailableException failure = new ServiceUnavailableException("Catalog service is unavailable");
