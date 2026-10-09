@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -50,7 +49,7 @@ public class FilmListReconciliationService {
         }
     }
 
-    @Scheduled(initialDelay = 1, fixedDelay = 10, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelayString = "PT10M", fixedDelayString = "PT24H")
     public void reconcileOnSchedule() {
         if (!reconciliationEnabled) {
             return;

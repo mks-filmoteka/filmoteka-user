@@ -121,7 +121,7 @@ Film-deletion events from Kafka remove the deleted film from all lists asynchron
 
 Failed cleanup uses retry topics and then a `.user.dlt` topic. Dead-letter records are retained for 30 days and require manual investigation; automatic DLT processing is disabled.
 
-A periodic reconciliation also checks stored film IDs against catalog and removes missing films. It is enabled by default and can be disabled with `app.reconciliation.enabled=false`.
+A daily reconciliation also checks stored film IDs against catalog and removes missing films. It first runs 10 minutes after startup and skips a batch when catalog reports more than half of it missing. It is enabled by default and can be disabled with `app.reconciliation.enabled=false`.
 
 ## Build
 
