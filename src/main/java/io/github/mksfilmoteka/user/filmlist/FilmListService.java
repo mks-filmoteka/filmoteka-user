@@ -2,6 +2,7 @@ package io.github.mksfilmoteka.user.filmlist;
 
 import io.github.mksfilmoteka.user.auth.AuthUser;
 import io.github.mksfilmoteka.user.catalog.CatalogClient;
+import io.github.mksfilmoteka.user.common.exception.BadRequestException;
 import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
 import io.github.mksfilmoteka.user.filmlist.dto.FilmListRequest;
@@ -23,6 +24,9 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Transactional
 public class FilmListService {
+
+    static final int MAX_LISTS_PER_USER = 50;
+    static final int MAX_FILMS_PER_LIST = 500;
 
     private final FilmListRepository filmListRepository;
     private final FilmListMapper filmListMapper;
@@ -49,6 +53,10 @@ public class FilmListService {
     public FilmListResponse createFilmList(AuthUser authUser, FilmListRequest request) {
         UserProfile userProfile = userProfileProvisionService.getOrCreate(authUser);
         Long userId = userProfile.getId();
+
+        if (filmListRepository.countByUserId(userId) >= MAX_LISTS_PER_USER) {
+            throw new BadRequestException("A user can have at most " + MAX_LISTS_PER_USER + " film lists");
+        }
 
         if (filmListRepository.existsByNameIgnoreCaseAndUserId(request.name(), userId)) {
             throw new ConflictException("Film list with name '" + request.name() + "' already exists");
@@ -89,6 +97,12 @@ public class FilmListService {
     public FilmListResponse addFilm(AuthUser authUser, Long id, Long filmId) {
         Long userId = getUserId(authUser);
         FilmList filmList = getFilmListOrThrow(userId, id);
+
+        Set<Long> filmIds = filmList.getFilmIds();
+        if (!filmIds.contains(filmId) && filmIds.size() >= MAX_FILMS_PER_LIST) {
+            throw new BadRequestException("A film list can hold at most " + MAX_FILMS_PER_LIST + " films");
+        }
+
         catalogClient.requireFilmExists(filmId);
 
         filmList.getFilmIds().add(filmId);
@@ -110,6 +124,14 @@ public class FilmListService {
         Set<Long> filmIdsToValidate = new HashSet<>(toAdd);
         filmIdsToValidate.removeAll(filmIds);
         filmIdsToValidate.removeAll(toRemove);
+
+        Set<Long> resultingFilmIds = new HashSet<>(filmIds);
+        resultingFilmIds.addAll(toAdd);
+        resultingFilmIds.removeAll(toRemove);
+
+        if (resultingFilmIds.size() > MAX_FILMS_PER_LIST && resultingFilmIds.size() > filmIds.size()) {
+            throw new BadRequestException("A film list can hold at most " + MAX_FILMS_PER_LIST + " films");
+        }
 
         if (!filmIdsToValidate.isEmpty()) {
             catalogClient.requireFilmsExist(filmIdsToValidate);
