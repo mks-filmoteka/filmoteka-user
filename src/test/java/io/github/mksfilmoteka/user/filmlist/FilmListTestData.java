@@ -6,8 +6,10 @@ import io.github.mksfilmoteka.user.filmlist.dto.ListedFilmsRequest;
 import io.github.mksfilmoteka.user.profile.UserProfile;
 
 import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import static io.github.mksfilmoteka.user.profile.UserProfileTestData.loadedUserProfile;
 
@@ -56,7 +58,11 @@ public final class FilmListTestData {
     }
 
     public static Set<Long> filmIds(Long... filmIds) {
-        return new LinkedHashSet<>(Arrays.asList(filmIds));
+        return new HashSet<>(Arrays.asList(filmIds));
+    }
+
+    public static Set<Long> filmIdRange(int count) {
+        return LongStream.rangeClosed(1, count).boxed().collect(Collectors.toCollection(HashSet::new));
     }
 
     public static Set<Long> filmIds() {

@@ -108,6 +108,18 @@ class FilmListRepositoryTest {
     }
 
     @Test
+    void shouldCountByUserId() {
+        UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
+        UserProfile otherUserProfile = entityManager.persistAndFlush(UserProfileTestData.userProfile("other-sub", "other@gmail.com"));
+        filmListRepository.saveAndFlush(filmList(savedUserProfile));
+        filmListRepository.saveAndFlush(filmList(otherUserProfile));
+
+        long count = filmListRepository.countByUserId(savedUserProfile.getId());
+
+        assertThat(count).isEqualTo(1);
+    }
+
+    @Test
     void shouldAllowSameNameForDifferentUsers() {
         UserProfile savedUserProfile = entityManager.persistAndFlush(userProfile());
         UserProfile otherUserProfile = entityManager.persistAndFlush(UserProfileTestData.userProfile("other-sub", "other@gmail.com"));

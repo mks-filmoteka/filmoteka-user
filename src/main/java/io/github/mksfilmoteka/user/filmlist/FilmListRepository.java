@@ -19,6 +19,8 @@ public interface FilmListRepository extends JpaRepository<FilmList, Long> {
 
     boolean existsByNameIgnoreCaseAndUserId(String name, Long userId);
 
+    long countByUserId(Long userId);
+
     @Modifying
     @Query(value = "DELETE FROM {h-schema}list_item WHERE film_id = :filmId", nativeQuery = true)
     int removeFilmFromAllLists(@Param("filmId") Long filmId);

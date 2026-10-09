@@ -1,6 +1,7 @@
 package io.github.mksfilmoteka.user.filmlist;
 
 import io.github.mksfilmoteka.user.catalog.CatalogClient;
+import io.github.mksfilmoteka.user.common.exception.BadRequestException;
 import io.github.mksfilmoteka.user.common.exception.ConflictException;
 import io.github.mksfilmoteka.user.common.exception.ResourceNotFoundException;
 import io.github.mksfilmoteka.user.common.exception.ServiceUnavailableException;
@@ -218,6 +219,72 @@ class FilmListServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> filmListService.deleteFilmList(AUTH_USER, LIST_ID));
 
         verify(filmListRepository, never()).delete(any(FilmList.class));
+    }
+
+    @Test
+    void shouldThrowOnCreateIfListLimitReached() {
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.countByUserId(USER_PROFILE_ID)).thenReturn((long) FilmListService.MAX_LISTS_PER_USER);
+        FilmListRequest request = filmListRequest();
+
+        assertThrows(BadRequestException.class, () -> filmListService.createFilmList(AUTH_USER, request));
+
+        verify(filmListRepository, never()).save(any());
+        verifyNoInteractions(filmListMapper);
+    }
+
+    @Test
+    void shouldThrowOnAddFilmIfFilmLimitReached() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIdRange(FilmListService.MAX_FILMS_PER_LIST));
+        long newFilmId = FilmListService.MAX_FILMS_PER_LIST + 1L;
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+
+        assertThrows(BadRequestException.class, () -> filmListService.addFilm(AUTH_USER, LIST_ID, newFilmId));
+
+        assertThat(filmList.getFilmIds()).hasSize(FilmListService.MAX_FILMS_PER_LIST);
+        verifyNoInteractions(catalogClient);
+        verify(filmListRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowOnPatchFilmsIfFilmLimitExceeded() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIdRange(FilmListService.MAX_FILMS_PER_LIST));
+        long newFilmId = FilmListService.MAX_FILMS_PER_LIST + 1L;
+        ListedFilmsRequest request = new ListedFilmsRequest(filmIds(newFilmId), Set.of());
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+
+        assertThrows(BadRequestException.class, () -> filmListService.patchFilms(AUTH_USER, LIST_ID, request));
+
+        assertThat(filmList.getFilmIds()).hasSize(FilmListService.MAX_FILMS_PER_LIST);
+        verifyNoInteractions(catalogClient);
+        verify(filmListRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldPatchFilmsOnFullListIfRemovalsKeepItWithinLimit() {
+        FilmList filmList = loadedFilmList();
+        filmList.setFilmIds(filmIdRange(FilmListService.MAX_FILMS_PER_LIST));
+        long newFilmId = FilmListService.MAX_FILMS_PER_LIST + 1L;
+        ListedFilmsRequest request = new ListedFilmsRequest(filmIds(newFilmId), filmIds(1L));
+
+        when(userProfileProvisionService.getOrCreate(AUTH_USER)).thenReturn(loadedUserProfile());
+        when(filmListRepository.findByIdAndUserId(LIST_ID, USER_PROFILE_ID)).thenReturn(Optional.of(filmList));
+        when(filmListRepository.save(filmList)).thenReturn(filmList);
+        when(filmListMapper.filmListToFilmListResponse(filmList)).thenReturn(filmListResponse());
+
+        filmListService.patchFilms(AUTH_USER, LIST_ID, request);
+
+        assertThat(filmList.getFilmIds())
+                .hasSize(FilmListService.MAX_FILMS_PER_LIST)
+                .contains(newFilmId)
+                .doesNotContain(1L);
+        verify(filmListRepository).save(filmList);
     }
 
     @Test
